@@ -9,6 +9,7 @@ from database import (
 from metadata_extractor import extraer_metadata, normalizar_letra, evaluar_calidad
 from scraper import ejecutar_scraper
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 app = Flask(__name__)
 
 # Inicializar y migrar DB
@@ -290,7 +291,7 @@ def generar_dataset():
     rows = cursor.fetchall()
     conn.close()
 
-    os.makedirs("data", exist_ok=True)
+    os.makedirs(os.path.join(BASE_DIR, "data"), exist_ok=True)
 
     if formato == "instruction":
         dataset = []
@@ -322,7 +323,7 @@ def generar_dataset():
                 }
             })
 
-        path = "data/dataset_instruction.json"
+        path = os.path.join(BASE_DIR, "data", "dataset_instruction.json")
     else:
         dataset = []
         for r in rows:
@@ -337,7 +338,7 @@ def generar_dataset():
                 "agrupacion": r["agrupacion"]
             })
 
-        path = "data/dataset_ia.json"
+        path = os.path.join(BASE_DIR, "data", "dataset_ia.json")
 
     with open(path, "w", encoding="utf-8") as f:
         json.dump(dataset, f, ensure_ascii=False, indent=2)
@@ -355,7 +356,7 @@ def generar_dataset():
 
 @app.route("/api/export_static", methods=["POST"])
 def export_static():
-    export_dir = "static_export"
+    export_dir = os.path.join(BASE_DIR, "static_export")
 
     if os.path.exists(export_dir):
         shutil.rmtree(export_dir)
@@ -421,9 +422,9 @@ def export_static():
         json.dump(indice, f, ensure_ascii=False, indent=2)
 
     # Copiar frontend
-    shutil.copy("templates/index.html", os.path.join(export_dir, "index.html"))
-    shutil.copy("static/css/style.css", os.path.join(export_dir, "css", "style.css"))
-    shutil.copy("static/js/app.js", os.path.join(export_dir, "js", "app.js"))
+    shutil.copy(os.path.join(BASE_DIR, "templates", "index.html"), os.path.join(export_dir, "index.html"))
+    shutil.copy(os.path.join(BASE_DIR, "static", "css", "style.css"), os.path.join(export_dir, "css", "style.css"))
+    shutil.copy(os.path.join(BASE_DIR, "static", "js", "app.js"), os.path.join(export_dir, "js", "app.js"))
 
     return jsonify({
         "exportadas": len(letras),
@@ -657,6 +658,198 @@ def estadisticas_avanzadas():
 
     conn.close()
     return jsonify(stats)
+
+
+# =========================
+# API: LETRA ALEATORIA
+# =========================
+
+@app.route("/api/aleatorio")
+def letra_aleatoria():
+    """Devuelve una letra aleatoria, opcionalmente filtrada."""
+    modalidad = request.args.get("modalidad")
+    anio = request.args.get("anio")
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    query = "SELECT id, titulo, anio, modalidad, tipo_pieza, agrupacion, contenido, autor FROM letras WHERE contenido IS NOT NULL AND LENGTH(contenido) > 100"
+    params = []
+
+    if modalidad:
+        query += " AND modalidad=?"
+        params.append(modalidad)
+    if anio:
+        query += " AND anio=?"
+        params.append(anio)
+
+    query += " ORDER BY RANDOM() LIMIT 1"
+    cursor.execute(query, params)
+    row = cursor.fetchone()
+    conn.close()
+
+    if not row:
+        return jsonify({"error": "No hay letras disponibles"}), 404
+
+    return jsonify(dict(row))
+
+
+# =========================
+# API: TIMELINE
+# =========================
+
+@app.route("/api/timeline")
+def timeline():
+    """Cronologia del carnaval: eventos por anio con resumen."""
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT anio,
+               COUNT(*) as total_letras,
+               COUNT(DISTINCT agrupacion) as agrupaciones,
+               COUNT(DISTINCT modalidad) as modalidades,
+               GROUP_CONCAT(DISTINCT modalidad) as lista_modalidades,
+               AVG(calidad) as calidad_media
+        FROM letras
+        WHERE anio IS NOT NULL
+        GROUP BY anio
+        ORDER BY anio
+    """)
+
+    timeline_data = []
+    for r in cursor.fetchall():
+        # Top agrupacion de ese anio
+        cursor.execute("""
+            SELECT agrupacion, COUNT(*) as cnt
+            FROM letras WHERE anio=? AND agrupacion IS NOT NULL
+            GROUP BY agrupacion ORDER BY cnt DESC LIMIT 3
+        """, (r["anio"],))
+        top_agrup = [row["agrupacion"] for row in cursor.fetchall()]
+
+        timeline_data.append({
+            "anio": r["anio"],
+            "total_letras": r["total_letras"],
+            "agrupaciones": r["agrupaciones"],
+            "modalidades": r["lista_modalidades"],
+            "calidad_media": round(r["calidad_media"] or 0, 1),
+            "top_agrupaciones": top_agrup
+        })
+
+    conn.close()
+    return jsonify({"timeline": timeline_data})
+
+
+# =========================
+# API: PALABRAS FRECUENTES
+# =========================
+
+@app.route("/api/palabras_frecuentes")
+def palabras_frecuentes():
+    """Analisis de frecuencia de palabras por modalidad/anio."""
+    import re
+    from collections import Counter
+
+    modalidad = request.args.get("modalidad")
+    anio = request.args.get("anio")
+    limit = int(request.args.get("limit", 60))
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    query = "SELECT contenido FROM letras WHERE contenido IS NOT NULL"
+    params = []
+
+    if modalidad:
+        query += " AND modalidad=?"
+        params.append(modalidad)
+    if anio:
+        query += " AND anio=?"
+        params.append(anio)
+
+    cursor.execute(query, params)
+
+    # Stopwords del espanol + palabras muy comunes en letras
+    stopwords = {
+        "de", "la", "el", "en", "que", "y", "a", "los", "las", "del", "un",
+        "una", "por", "con", "no", "es", "se", "su", "al", "lo", "como",
+        "mas", "pero", "sus", "le", "ya", "o", "fue", "este", "ha", "si",
+        "me", "mi", "te", "tu", "nos", "yo", "era", "son", "ser", "muy",
+        "tan", "para", "ni", "sin", "hay", "eso", "esta", "ese", "esa",
+        "estos", "estas", "esos", "esas", "todo", "toda", "todos", "todas",
+        "otro", "otra", "otros", "he", "han", "cada", "donde", "cuando",
+        "quien", "porque", "aunque", "entre", "hasta", "desde", "sobre",
+        "tiene", "puede", "hace", "van", "voy", "viene", "dio", "da",
+        "ser", "ver", "ir", "hoy", "dia", "vez", "bien", "aqui", "alli",
+        "asi", "solo", "dos", "tres", "uno", "dos", "les", "cual"
+    }
+
+    counter = Counter()
+    total_textos = 0
+
+    for row in cursor.fetchall():
+        texto = row["contenido"].lower()
+        palabras = re.findall(r'[a-záéíóúñü]+', texto)
+        palabras_filtradas = [p for p in palabras if len(p) > 3 and p not in stopwords]
+        counter.update(palabras_filtradas)
+        total_textos += 1
+
+    conn.close()
+
+    top_palabras = [{"palabra": p, "frecuencia": c} for p, c in counter.most_common(limit)]
+
+    return jsonify({
+        "palabras": top_palabras,
+        "total_textos": total_textos,
+        "filtros": {"modalidad": modalidad, "anio": anio}
+    })
+
+
+# =========================
+# API: AUTORES DESTACADOS
+# =========================
+
+@app.route("/api/autor/<nombre>")
+def detalle_autor(nombre):
+    """Ficha completa de un autor con todas sus obras."""
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT COUNT(*) as total,
+               COUNT(DISTINCT agrupacion) as agrupaciones,
+               COUNT(DISTINCT anio) as anios,
+               GROUP_CONCAT(DISTINCT modalidad) as modalidades,
+               MIN(anio) as primer_anio,
+               MAX(anio) as ultimo_anio,
+               AVG(LENGTH(contenido)) as longitud_media
+        FROM letras WHERE autor LIKE ?
+    """, (f"%{nombre}%",))
+    stats = cursor.fetchone()
+
+    if not stats or stats["total"] == 0:
+        conn.close()
+        return jsonify({"error": "Autor no encontrado"}), 404
+
+    cursor.execute("""
+        SELECT id, titulo, anio, modalidad, tipo_pieza, agrupacion
+        FROM letras WHERE autor LIKE ?
+        ORDER BY anio DESC, titulo
+    """, (f"%{nombre}%",))
+    obras = [dict(r) for r in cursor.fetchall()]
+
+    conn.close()
+
+    return jsonify({
+        "autor": nombre,
+        "total_obras": stats["total"],
+        "agrupaciones": stats["agrupaciones"],
+        "anios_activos": stats["anios"],
+        "modalidades": stats["modalidades"],
+        "periodo": f"{stats['primer_anio'] or '?'} - {stats['ultimo_anio'] or '?'}",
+        "longitud_media": round(stats["longitud_media"] or 0),
+        "obras": obras
+    })
 
 
 if __name__ == "__main__":

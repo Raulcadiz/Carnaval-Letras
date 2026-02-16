@@ -580,6 +580,238 @@ body {
 .comp-row .value { color: var(--text-primary); font-weight: 600; font-size: 0.85rem; }
 
 /* ==============================
+   DESCUBRIR
+   ============================== */
+
+.descubrir-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+.descubrir-aleatorio,
+.descubrir-nube {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+}
+
+.descubrir-aleatorio h3,
+.descubrir-nube h3 {
+    font-size: 1.1rem;
+    margin-bottom: 0.3rem;
+}
+
+.aleatorio-filtros,
+.nube-filtros {
+    display: flex;
+    gap: 0.5rem;
+    margin: 1rem 0;
+    align-items: center;
+}
+
+.aleatorio-filtros select,
+.nube-filtros select {
+    padding: 0.5rem 0.7rem;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-primary);
+    font-size: 0.85rem;
+}
+
+.btn-aleatorio {
+    animation: pulse-glow 2s infinite;
+}
+
+@keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(233,69,96,0.4); }
+    50% { box-shadow: 0 0 15px 3px rgba(233,69,96,0.3); }
+}
+
+.aleatorio-card {
+    min-height: 100px;
+}
+
+.aleatorio-card .ale-titulo {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.aleatorio-card .ale-meta {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.8rem;
+}
+
+.aleatorio-card .ale-texto {
+    white-space: pre-wrap;
+    font-family: 'Georgia', serif;
+    font-size: 0.88rem;
+    line-height: 1.7;
+    color: var(--text-secondary);
+    background: var(--bg-primary);
+    padding: 1rem;
+    border-radius: var(--radius);
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.aleatorio-card .ale-footer {
+    margin-top: 0.8rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.aleatorio-card .ale-footer .btn-ver {
+    padding: 0.4rem 0.8rem;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--accent);
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.2s;
+}
+
+.aleatorio-card .ale-footer .btn-ver:hover {
+    background: var(--accent);
+    color: white;
+}
+
+/* NUBE DE PALABRAS */
+.nube-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    justify-content: center;
+    align-items: center;
+    min-height: 200px;
+    padding: 1rem;
+}
+
+.nube-container .nube-word {
+    display: inline-block;
+    padding: 0.2rem 0.5rem;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+    line-height: 1.2;
+}
+
+.nube-container .nube-word:hover {
+    background: var(--bg-hover);
+    transform: scale(1.1);
+}
+
+/* ==============================
+   CRONOLOGIA / TIMELINE
+   ============================== */
+
+.cronologia-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.cronologia-header h3 {
+    font-size: 1.2rem;
+    margin-bottom: 0.3rem;
+}
+
+.timeline-container {
+    position: relative;
+    padding-left: 2rem;
+}
+
+.timeline-container::before {
+    content: '';
+    position: absolute;
+    left: 8px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(to bottom, var(--accent), var(--accent-dark), var(--border));
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 1rem;
+    padding-left: 1.5rem;
+}
+
+.timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -1.55rem;
+    top: 0.6rem;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid var(--bg-primary);
+    z-index: 1;
+}
+
+.timeline-item.highlight::before {
+    width: 16px;
+    height: 16px;
+    left: -1.65rem;
+    top: 0.45rem;
+    box-shadow: 0 0 10px rgba(233,69,96,0.5);
+}
+
+.timeline-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.2rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.timeline-card:hover {
+    border-color: var(--accent);
+    transform: translateX(4px);
+}
+
+.timeline-anio {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: var(--gold);
+    display: inline-block;
+    margin-right: 0.8rem;
+}
+
+.timeline-stats {
+    display: inline-flex;
+    gap: 0.8rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.timeline-stats span {
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
+}
+
+.timeline-agrupaciones {
+    margin-top: 0.4rem;
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+}
+
+.timeline-agrupaciones .tag {
+    font-size: 0.7rem;
+}
+
+/* ==============================
    LOADING
    ============================== */
 
@@ -614,6 +846,7 @@ body {
     .bar-label { min-width: 60px; font-size: 0.7rem; }
     .comparar-inputs input { width: 100%; }
     .comparar-grid { grid-template-columns: 1fr; }
+    .descubrir-layout { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 480px) {

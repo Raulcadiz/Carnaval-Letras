@@ -40,6 +40,8 @@ function switchTab(tab) {
 
     if (tab === "estadisticas") cargarCharts();
     if (tab === "explorar") cargarLetras();
+    if (tab === "descubrir") cargarNubePalabras();
+    if (tab === "cronologia") cargarTimeline();
 }
 
 // ==============================
@@ -463,4 +465,184 @@ function escapeHtml(text) {
     const div = document.createElement("div");
     div.textContent = text;
     return div.innerHTML;
+}
+
+
+// ==============================
+// LETRA ALEATORIA
+// ==============================
+
+function letraAleatoria() {
+    const modalidad = document.getElementById("aleatorioModalidad").value;
+    const cont = document.getElementById("aleatorioResultado");
+    cont.innerHTML = '<div class="loading">Buscando...</div>';
+
+    const params = modalidad ? `?modalidad=${encodeURIComponent(modalidad)}` : "";
+
+    fetch("/api/aleatorio" + params)
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                cont.innerHTML = '<div class="empty-state">No hay letras disponibles</div>';
+                return;
+            }
+
+            let metaHTML = "";
+            if (data.anio) metaHTML += `<span class="tag anio">${escapeHtml(String(data.anio))}</span>`;
+            if (data.modalidad) metaHTML += `<span class="tag modalidad">${escapeHtml(data.modalidad)}</span>`;
+            if (data.tipo_pieza) metaHTML += `<span class="tag tipo">${escapeHtml(data.tipo_pieza)}</span>`;
+            if (data.agrupacion) metaHTML += `<span class="tag">${escapeHtml(data.agrupacion)}</span>`;
+
+            // Truncar texto para la preview
+            const textoPreview = data.contenido && data.contenido.length > 500
+                ? data.contenido.substring(0, 500) + "..."
+                : data.contenido || "";
+
+            cont.innerHTML = `
+                <div class="ale-titulo">${escapeHtml(data.titulo)}</div>
+                <div class="ale-meta">${metaHTML}</div>
+                <div class="ale-texto">${escapeHtml(textoPreview)}</div>
+                <div class="ale-footer">
+                    ${data.autor ? `<span class="text-muted">Autor: ${escapeHtml(data.autor)}</span>` : '<span></span>'}
+                    <button class="btn-ver" onclick="cargarDetalle(${data.id})">Ver completa</button>
+                </div>
+            `;
+        })
+        .catch(() => {
+            cont.innerHTML = '<div class="empty-state">Error al cargar</div>';
+        });
+}
+
+
+// ==============================
+// NUBE DE PALABRAS
+// ==============================
+
+let _nubeLoaded = false;
+
+function cargarNubePalabras() {
+    const modalidad = document.getElementById("nubeModalidad").value;
+    const cont = document.getElementById("nubePalabras");
+
+    if (_nubeLoaded && !modalidad && cont.children.length > 0) return;
+
+    cont.innerHTML = '<div class="loading">Analizando vocabulario...</div>';
+
+    const params = modalidad ? `?modalidad=${encodeURIComponent(modalidad)}` : "";
+
+    fetch("/api/palabras_frecuentes" + params)
+        .then(r => r.json())
+        .then(data => {
+            cont.innerHTML = "";
+            if (!data.palabras.length) {
+                cont.innerHTML = '<div class="empty-state">No hay datos</div>';
+                return;
+            }
+
+            const maxFreq = data.palabras[0].frecuencia;
+            const minFreq = data.palabras[data.palabras.length - 1].frecuencia;
+
+            // Colores por rango
+            const colores = [
+                "var(--accent)",
+                "var(--accent-light)",
+                "var(--gold)",
+                "var(--success)",
+                "var(--text-secondary)",
+                "var(--text-muted)"
+            ];
+
+            // Mezclar orden para que sea mas visual
+            const mezcladas = [...data.palabras].sort(() => Math.random() - 0.5);
+
+            mezcladas.forEach(item => {
+                const ratio = (item.frecuencia - minFreq) / (maxFreq - minFreq || 1);
+                const fontSize = 0.7 + ratio * 1.8; // 0.7rem a 2.5rem
+                const colorIndex = Math.floor((1 - ratio) * (colores.length - 1));
+
+                const span = document.createElement("span");
+                span.className = "nube-word";
+                span.textContent = item.palabra;
+                span.style.fontSize = fontSize + "rem";
+                span.style.color = colores[colorIndex];
+                span.style.fontWeight = ratio > 0.5 ? "700" : "400";
+                span.title = `${item.palabra}: ${item.frecuencia} veces`;
+                span.onclick = () => {
+                    switchTab("buscar");
+                    document.getElementById("buscadorFTS").value = item.palabra;
+                    buscarFullText();
+                };
+                cont.appendChild(span);
+            });
+
+            _nubeLoaded = !modalidad;
+        })
+        .catch(() => {
+            cont.innerHTML = '<div class="empty-state">Error al cargar</div>';
+        });
+}
+
+
+// ==============================
+// TIMELINE / CRONOLOGIA
+// ==============================
+
+let _timelineLoaded = false;
+
+function cargarTimeline() {
+    if (_timelineLoaded) return;
+
+    const cont = document.getElementById("timelineContainer");
+    cont.innerHTML = '<div class="loading">Cargando cronologia...</div>';
+
+    fetch("/api/timeline")
+        .then(r => r.json())
+        .then(data => {
+            cont.innerHTML = "";
+
+            if (!data.timeline.length) {
+                cont.innerHTML = '<div class="empty-state">No hay datos cronologicos</div>';
+                return;
+            }
+
+            const maxLetras = Math.max(...data.timeline.map(d => d.total_letras));
+
+            data.timeline.forEach(item => {
+                const div = document.createElement("div");
+                const isHighlight = item.total_letras > maxLetras * 0.7;
+                div.className = "timeline-item" + (isHighlight ? " highlight" : "");
+
+                let agrupHTML = item.top_agrupaciones.map(a =>
+                    `<span class="tag">${escapeHtml(a)}</span>`
+                ).join("");
+
+                div.innerHTML = `
+                    <div class="timeline-card" onclick="explorarAnio('${item.anio}')">
+                        <div>
+                            <span class="timeline-anio">${escapeHtml(String(item.anio))}</span>
+                            <span class="timeline-stats">
+                                <span>${item.total_letras} letras</span>
+                                <span>${item.agrupaciones} agrupaciones</span>
+                                <span>${item.modalidades || ''}</span>
+                            </span>
+                        </div>
+                        <div class="timeline-agrupaciones">${agrupHTML}</div>
+                    </div>
+                `;
+                cont.appendChild(div);
+            });
+
+            _timelineLoaded = true;
+        })
+        .catch(() => {
+            cont.innerHTML = '<div class="empty-state">Error al cargar cronologia</div>';
+        });
+}
+
+function explorarAnio(anio) {
+    switchTab("explorar");
+    document.getElementById("filtroAnio").value = anio;
+    currentFilters = { anio: anio };
+    currentPage = 1;
+    cargarLetras();
 }

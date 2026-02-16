@@ -44,6 +44,8 @@
 <nav class="tabs">
     <button class="tab active" data-tab="buscar" onclick="switchTab('buscar')">Buscar</button>
     <button class="tab" data-tab="explorar" onclick="switchTab('explorar')">Explorar</button>
+    <button class="tab" data-tab="descubrir" onclick="switchTab('descubrir')">Descubrir</button>
+    <button class="tab" data-tab="cronologia" onclick="switchTab('cronologia')">Cronolog&iacute;a</button>
     <button class="tab" data-tab="comparar" onclick="switchTab('comparar')">Comparar</button>
     <button class="tab" data-tab="estadisticas" onclick="switchTab('estadisticas')">Estad&iacute;sticas</button>
 </nav>
@@ -88,6 +90,51 @@
     <div id="lista" class="letras-grid"></div>
 
     <div class="paginacion" id="paginacion"></div>
+</section>
+
+<!-- TAB: DESCUBRIR -->
+<section class="tab-content" id="tab-descubrir">
+    <div class="descubrir-layout">
+        <!-- LETRA ALEATORIA -->
+        <div class="descubrir-aleatorio">
+            <h3>Letra aleatoria</h3>
+            <p class="text-muted">Descubre letras al azar del archivo</p>
+            <div class="aleatorio-filtros">
+                <select id="aleatorioModalidad">
+                    <option value="">Cualquier modalidad</option>
+                    <option value="Comparsa">Comparsa</option>
+                    <option value="Chirigota">Chirigota</option>
+                    <option value="Coro">Coro</option>
+                </select>
+                <button onclick="letraAleatoria()" class="btn-primary btn-aleatorio">Sorpr&eacute;ndeme</button>
+            </div>
+            <div id="aleatorioResultado" class="aleatorio-card"></div>
+        </div>
+
+        <!-- NUBE DE PALABRAS -->
+        <div class="descubrir-nube">
+            <h3>Palabras m&aacute;s usadas</h3>
+            <p class="text-muted">An&aacute;lisis de frecuencia del vocabulario carnavalesco</p>
+            <div class="nube-filtros">
+                <select id="nubeModalidad" onchange="cargarNubePalabras()">
+                    <option value="">Todas las modalidades</option>
+                    <option value="Comparsa">Comparsa</option>
+                    <option value="Chirigota">Chirigota</option>
+                    <option value="Coro">Coro</option>
+                </select>
+            </div>
+            <div id="nubePalabras" class="nube-container"></div>
+        </div>
+    </div>
+</section>
+
+<!-- TAB: CRONOLOGIA -->
+<section class="tab-content" id="tab-cronologia">
+    <div class="cronologia-header">
+        <h3>Cronolog&iacute;a del Carnaval de C&aacute;diz</h3>
+        <p class="text-muted">Recorrido hist&oacute;rico por a&ntilde;os con las agrupaciones m&aacute;s destacadas</p>
+    </div>
+    <div id="timelineContainer" class="timeline-container"></div>
 </section>
 
 <!-- TAB: COMPARAR -->
