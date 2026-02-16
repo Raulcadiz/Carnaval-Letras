@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Archivo Digital del Carnaval de C&aacute;diz</title>
+    <meta name="description" content="Archivo digital de letras del Carnaval de C&aacute;diz. Buscador, estad&iacute;sticas y base de datos de comparsas, chirigotas, coros y cuartetos.">
+    <meta property="og:title" content="Archivo Digital del Carnaval de C&aacute;diz">
+    <meta property="og:description" content="La mayor base de datos de letras del Carnaval de C&aacute;diz">
+    <meta property="og:type" content="website">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="main-header">
+    <div class="header-content">
+        <h1 class="logo">Archivo del Carnaval de C&aacute;diz</h1>
+        <p class="subtitle">Base de datos de letras &middot; Comparsas, Chirigotas, Coros y Cuartetos</p>
+    </div>
+</header>
+
+<!-- STATS BAR -->
+<section class="stats-bar" id="statsBar">
+    <div class="stat-item">
+        <span class="stat-number" id="statTotal">--</span>
+        <span class="stat-label">Letras</span>
+    </div>
+    <div class="stat-item">
+        <span class="stat-number" id="statAnios">--</span>
+        <span class="stat-label">A&ntilde;os</span>
+    </div>
+    <div class="stat-item">
+        <span class="stat-number" id="statModalidades">--</span>
+        <span class="stat-label">Modalidades</span>
+    </div>
+    <div class="stat-item">
+        <span class="stat-number" id="statAgrupaciones">--</span>
+        <span class="stat-label">Agrupaciones</span>
+    </div>
+</section>
+
+<!-- TABS -->
+<nav class="tabs">
+    <button class="tab active" data-tab="buscar" onclick="switchTab('buscar')">Buscar</button>
+    <button class="tab" data-tab="explorar" onclick="switchTab('explorar')">Explorar</button>
+    <button class="tab" data-tab="comparar" onclick="switchTab('comparar')">Comparar</button>
+    <button class="tab" data-tab="estadisticas" onclick="switchTab('estadisticas')">Estad&iacute;sticas</button>
+</nav>
+
+<!-- TAB: BUSCAR -->
+<section class="tab-content active" id="tab-buscar">
+    <div class="search-box">
+        <input type="text" id="buscadorFTS" placeholder="Buscar en todas las letras... (ej: 'nostalgia', 'cadiz', 'critica politica')" autocomplete="off">
+        <button onclick="buscarFullText()" class="btn-primary">Buscar</button>
+    </div>
+    <div class="tematicas-bar" id="tematicasBar">
+        <span class="tematica-label">Tematicas:</span>
+        <button class="tag-btn" onclick="buscarTematica('nostalgia')">Nostalgia</button>
+        <button class="tag-btn" onclick="buscarTematica('politica')">Pol&iacute;tica</button>
+        <button class="tag-btn" onclick="buscarTematica('amor')">Amor</button>
+        <button class="tag-btn" onclick="buscarTematica('cadiz')">C&aacute;diz</button>
+        <button class="tag-btn" onclick="buscarTematica('mar')">Mar</button>
+        <button class="tag-btn" onclick="buscarTematica('madre')">Madre</button>
+        <button class="tag-btn" onclick="buscarTematica('carnaval')">Carnaval</button>
+        <button class="tag-btn" onclick="buscarTematica('libertad')">Libertad</button>
+        <button class="tag-btn" onclick="buscarTematica('humor')">Humor</button>
+    </div>
+    <div id="resultadosBusqueda" class="resultados-lista"></div>
+</section>
+
+<!-- TAB: EXPLORAR -->
+<section class="tab-content" id="tab-explorar">
+    <div class="filtros-bar">
+        <select id="filtroAnio"><option value="">Todos los a&ntilde;os</option></select>
+        <select id="filtroModalidad"><option value="">Todas las modalidades</option></select>
+        <select id="filtroTipo"><option value="">Todos los tipos</option></select>
+        <input type="text" id="filtroAgrupacion" placeholder="Buscar agrupaci&oacute;n...">
+        <button onclick="aplicarFiltros()" class="btn-primary">Filtrar</button>
+        <button onclick="limpiarFiltros()" class="btn-secondary">Limpiar</button>
+    </div>
+
+    <div class="info-bar" id="infoBar">
+        <span id="totalResultados">--</span>
+        <span id="paginaInfo"></span>
+    </div>
+
+    <div id="lista" class="letras-grid"></div>
+
+    <div class="paginacion" id="paginacion"></div>
+</section>
+
+<!-- TAB: COMPARAR -->
+<section class="tab-content" id="tab-comparar">
+    <div class="comparar-box">
+        <h3>Comparar agrupaciones</h3>
+        <p class="text-muted">Compara estad&iacute;sticas y estilos entre dos agrupaciones del Carnaval</p>
+        <div class="comparar-inputs">
+            <input type="text" id="comp1" placeholder="Agrupaci&oacute;n 1 (ej: Los carapapas)">
+            <span class="vs-label">VS</span>
+            <input type="text" id="comp2" placeholder="Agrupaci&oacute;n 2 (ej: Los blandengues)">
+            <button onclick="compararEstilos()" class="btn-primary">Comparar</button>
+        </div>
+    </div>
+    <div id="resultadoComparar"></div>
+</section>
+
+<!-- TAB: ESTADISTICAS -->
+<section class="tab-content" id="tab-estadisticas">
+    <div class="charts-grid">
+        <div class="chart-card">
+            <h3>Letras por a&ntilde;o</h3>
+            <div id="chartAnios" class="chart-bars"></div>
+        </div>
+        <div class="chart-card">
+            <h3>Por modalidad</h3>
+            <div id="chartModalidad" class="chart-bars"></div>
+        </div>
+        <div class="chart-card">
+            <h3>Por tipo de pieza</h3>
+            <div id="chartTipo" class="chart-bars"></div>
+        </div>
+        <div class="chart-card">
+            <h3>Top 15 agrupaciones</h3>
+            <div id="chartAgrupaciones" class="chart-bars"></div>
+        </div>
+        <div class="chart-card">
+            <h3>Top autores</h3>
+            <div id="chartAutores" class="chart-bars"></div>
+        </div>
+        <div class="chart-card">
+            <h3>Calidad del archivo</h3>
+            <div id="chartCalidad" class="chart-bars"></div>
+        </div>
+    </div>
+</section>
+
+<!-- MODAL DETALLE -->
+<div class="modal-overlay" id="modalOverlay" onclick="cerrarModal()">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <button class="modal-close" onclick="cerrarModal()">&times;</button>
+        <div id="detalle"></div>
+    </div>
+</div>
+
+<!-- FOOTER -->
+<footer class="main-footer">
+    <div class="footer-creditos">
+        <p><strong>Archivo Digital del Carnaval de C&aacute;diz</strong></p>
+        <p>Transcripci&oacute;n realizada por <a href="https://letrasdesdeelparaiso.blogspot.com/" target="_blank" rel="noopener">Letras Desde el Para&iacute;so</a></p>
+        <p class="legal">&copy; 2026. Prohibida su reproducci&oacute;n &iacute;ntegra sin autorizaci&oacute;n.<br>Para citar, incluya enlace directo a la publicaci&oacute;n original.</p>
+    </div>
+    <p class="footer-links">
+        <a href="/admin">Panel Admin</a> &middot;
+        <a href="/api/estadisticas" target="_blank">API</a> &middot;
+        <a href="/api/creditos" target="_blank">Cr&eacute;ditos</a>
+    </p>
+</footer>
+
+<script src="/static/js/app.js"></script>
+</body>
+</html>

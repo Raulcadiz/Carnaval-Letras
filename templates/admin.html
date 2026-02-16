@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Archivo Carnaval</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .admin-layout { max-width: 1000px; margin: 0 auto; padding: 1.5rem; }
+        .admin-header { text-align: center; margin-bottom: 2rem; }
+        .admin-header h1 { font-size: 1.6rem; margin-bottom: 0.3rem; }
+        .admin-header a { color: var(--accent); text-decoration: none; font-size: 0.85rem; }
+
+        .admin-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; }
+
+        .admin-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+        }
+        .admin-card h2 {
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+        .admin-card p {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+        }
+
+        .admin-card .actions { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+
+        .admin-card select,
+        .admin-card input {
+            padding: 0.5rem 0.7rem;
+            background: var(--bg-hover);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-size: 0.85rem;
+        }
+
+        .result-box {
+            margin-top: 1rem;
+            padding: 0.8rem;
+            background: var(--bg-hover);
+            border-radius: 4px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            min-height: 40px;
+            white-space: pre-line;
+        }
+        .result-box.success { border-left: 3px solid var(--success); }
+        .result-box.working { border-left: 3px solid var(--warning); color: var(--warning); }
+
+        .admin-stats { margin-bottom: 1.5rem; }
+        .admin-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 0.5rem;
+        }
+        .admin-stat {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 0.8rem;
+            text-align: center;
+        }
+        .admin-stat .val { font-size: 1.3rem; font-weight: 700; color: var(--accent); }
+        .admin-stat .lbl { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; }
+    </style>
+</head>
+<body>
+
+<div class="admin-layout">
+    <div class="admin-header">
+        <h1>Panel de Administracion</h1>
+        <a href="/">&larr; Volver al archivo</a>
+    </div>
+
+    <!-- STATS RAPIDAS -->
+    <div class="admin-stats">
+        <div class="admin-stats-grid" id="adminStats">
+            <div class="admin-stat"><span class="val" id="aTotal">--</span><span class="lbl">Total letras</span></div>
+            <div class="admin-stat"><span class="val" id="aVerificadas">--</span><span class="lbl">Verificadas</span></div>
+            <div class="admin-stat"><span class="val" id="aCalidad">--</span><span class="lbl">Calidad media</span></div>
+            <div class="admin-stat"><span class="val" id="aAños">--</span><span class="lbl">A&ntilde;os</span></div>
+            <div class="admin-stat"><span class="val" id="aModalidades">--</span><span class="lbl">Modalidades</span></div>
+        </div>
+    </div>
+
+    <!-- GRID ACCIONES -->
+    <div class="admin-grid">
+
+        <!-- SCRAPER -->
+        <div class="admin-card">
+            <h2>Scraper</h2>
+            <p>Ejecuta el scraper para recoger nuevas letras del blog fuente.</p>
+            <div class="actions">
+                <input type="number" id="maxPaginas" placeholder="Max paginas" min="1" max="100" style="width:120px">
+                <button class="btn-primary" onclick="ejecutarScraper()">Ejecutar</button>
+            </div>
+            <div class="result-box" id="resScraper">Listo para ejecutar</div>
+        </div>
+
+        <!-- ENRIQUECER -->
+        <div class="admin-card">
+            <h2>Enriquecer Metadata</h2>
+            <p>Extrae a&ntilde;o, modalidad, tipo de pieza y agrupacion de todos los titulos. Limpia textos y calcula calidad.</p>
+            <div class="actions">
+                <button class="btn-primary" onclick="enriquecer()">Enriquecer Todo</button>
+            </div>
+            <div class="result-box" id="resEnriquecer">Listo</div>
+        </div>
+
+        <!-- DEDUPLICACION -->
+        <div class="admin-card">
+            <h2>Deduplicacion</h2>
+            <p>Detecta y elimina letras duplicadas por hash de contenido.</p>
+            <div class="actions">
+                <button class="btn-secondary" onclick="verDuplicados()">Ver duplicados</button>
+                <button class="btn-primary" onclick="deduplicar()">Eliminar duplicados</button>
+            </div>
+            <div class="result-box" id="resDedup">Listo</div>
+        </div>
+
+        <!-- LIMPIAR TEXTOS -->
+        <div class="admin-card">
+            <h2>Limpieza de Textos</h2>
+            <p>Elimina cabeceras, firmas, publicidad y normaliza formato de todas las letras.</p>
+            <div class="actions">
+                <button class="btn-primary" onclick="limpiarTextos()">Limpiar Todo</button>
+            </div>
+            <div class="result-box" id="resLimpiar">Listo</div>
+        </div>
+
+        <!-- DATASET IA -->
+        <div class="admin-card">
+            <h2>Dataset IA</h2>
+            <p>Genera dataset limpio para entrenar modelos de IA.</p>
+            <div class="actions">
+                <select id="dsFormato">
+                    <option value="simple">Simple (texto)</option>
+                    <option value="instruction">Instruction-tuning</option>
+                </select>
+                <select id="dsModalidad">
+                    <option value="">Todas</option>
+                    <option value="Comparsa">Comparsa</option>
+                    <option value="Chirigota">Chirigota</option>
+                    <option value="Coro">Coro</option>
+                    <option value="Cuarteto">Cuarteto</option>
+                </select>
+                <input type="text" id="dsAño" placeholder="A&ntilde;o" style="width:80px">
+                <button class="btn-primary" onclick="generarDataset()">Generar</button>
+            </div>
+            <div class="result-box" id="resDataset">Listo</div>
+        </div>
+
+        <!-- EXPORTAR -->
+        <div class="admin-card">
+            <h2>Exportar Version Estatica</h2>
+            <p>Exporta toda la base de datos como JSON estructurado por a&ntilde;o y modalidad + frontend navegable.</p>
+            <div class="actions">
+                <button class="btn-primary" onclick="exportar()">Exportar</button>
+            </div>
+            <div class="result-box" id="resExport">Listo</div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Cargar stats al inicio
+fetch("/api/estadisticas").then(r=>r.json()).then(s=>{
+    document.getElementById("aTotal").textContent = s.total_letras.toLocaleString("es-ES");
+    document.getElementById("aVerificadas").textContent = s.verificadas;
+    document.getElementById("aCalidad").textContent = s.calidad_media + "/100";
+    document.getElementById("aAños").textContent = s.total_años;
+    document.getElementById("aModalidades").textContent = s.total_modalidades;
+});
+
+function setResult(id, text, type) {
+    const el = document.getElementById(id);
+    el.textContent = text;
+    el.className = "result-box" + (type ? " " + type : "");
+}
+
+function ejecutarScraper() {
+    setResult("resScraper", "Ejecutando scraper...", "working");
+    const max = document.getElementById("maxPaginas").value;
+    const body = max ? {max_paginas: parseInt(max)} : {};
+    fetch("/api/scraper", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)})
+    .then(r=>r.json())
+    .then(d=>{
+        setResult("resScraper",
+            `Nuevas: ${d.nuevas}\nDuplicadas: ${d.duplicadas}\nErrores: ${d.errores}\nPaginas: ${d.paginas}`, "success");
+    }).catch(e => setResult("resScraper", "Error: " + e.message));
+}
+
+function enriquecer() {
+    setResult("resEnriquecer", "Enriqueciendo metadata...", "working");
+    fetch("/api/enriquecer", {method:"POST"})
+    .then(r=>r.json())
+    .then(d=>{
+        setResult("resEnriquecer", `Actualizados: ${d.actualizados}\nTextos limpiados: ${d.limpiados}`, "success");
+    }).catch(e => setResult("resEnriquecer", "Error: " + e.message));
+}
+
+function verDuplicados() {
+    setResult("resDedup", "Analizando...", "working");
+    fetch("/api/duplicados")
+    .then(r=>r.json())
+    .then(d=>{
+        setResult("resDedup", `Grupos duplicados: ${d.total_grupos}`, "success");
+    }).catch(e => setResult("resDedup", "Error: " + e.message));
+}
+
+function deduplicar() {
+    setResult("resDedup", "Eliminando duplicados...", "working");
+    fetch("/api/deduplicar", {method:"POST"})
+    .then(r=>r.json())
+    .then(d=>{
+        setResult("resDedup", `Eliminados: ${d.eliminados}`, "success");
+    }).catch(e => setResult("resDedup", "Error: " + e.message));
+}
+
+function limpiarTextos() {
+    setResult("resLimpiar", "Limpiando textos...", "working");
+    fetch("/api/limpiar_textos", {method:"POST"})
+    .then(r=>r.json())
+    .then(d=>{
+        setResult("resLimpiar", `Limpiados: ${d.limpiados} de ${d.total}`, "success");
+    }).catch(e => setResult("resLimpiar", "Error: " + e.message));
+}
+
+function generarDataset() {
+    setResult("resDataset", "Generando dataset...", "working");
+    fetch("/api/generar_dataset", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+            formato: document.getElementById("dsFormato").value,
+            modalidad: document.getElementById("dsModalidad").value,
+            año: document.getElementById("dsAño").value
+        })
+    })
+    .then(r=>r.json())
+    .then(d=>{
+        setResult("resDataset", `Registros: ${d.registros}\nFormato: ${d.formato}\nArchivo: ${d.archivo}`, "success");
+    }).catch(e => setResult("resDataset", "Error: " + e.message));
+}
+
+function exportar() {
+    setResult("resExport", "Exportando...", "working");
+    fetch("/api/export_static", {method:"POST"})
+    .then(r=>r.json())
+    .then(d=>{
+        setResult("resExport",
+            `Exportadas: ${d.exportadas}\nArchivos por año: ${d.archivos_año}\nArchivos por modalidad: ${d.archivos_modalidad}\nCarpeta: ${d.carpeta}`, "success");
+    }).catch(e => setResult("resExport", "Error: " + e.message));
+}
+</script>
+</body>
+</html>
