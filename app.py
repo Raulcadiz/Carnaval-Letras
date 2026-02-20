@@ -1,6 +1,7 @@
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, Response
 import os
 import json
+import time
 import shutil
 from database import (
     get_db, init_db, migrate_db, buscar_duplicados, eliminar_duplicados,
@@ -8,6 +9,8 @@ from database import (
 )
 from metadata_extractor import extraer_metadata, normalizar_letra, evaluar_calidad
 from scraper import ejecutar_scraper
+from scraper_letrasdecarnaval import iniciar_scraper as ldc_iniciar, detener_scraper as ldc_detener, obtener_progreso as ldc_progreso
+from scraper_huggingface import ejecutar_importador_huggingface
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 app = Flask(__name__)
@@ -180,6 +183,133 @@ def lanzar_scraper():
     max_paginas = data.get("max_paginas")
     resultado = ejecutar_scraper(max_paginas=max_paginas)
     return jsonify(resultado)
+
+
+# =========================
+# API: SCRAPER LETRASDECARNAVAL.COM (hilo de fondo + SSE)
+# =========================
+
+@app.route("/api/scraper_letrasdecarnaval/iniciar", methods=["POST"])
+def ldc_scraper_iniciar():
+    ok = ldc_iniciar()
+    if ok:
+        return jsonify({"ok": True, "mensaje": "Scraper iniciado"})
+    return jsonify({"ok": False, "mensaje": "El scraper ya esta en ejecucion"}), 409
+
+
+@app.route("/api/scraper_letrasdecarnaval/detener", methods=["POST"])
+def ldc_scraper_detener():
+    ok = ldc_detener()
+    if ok:
+        return jsonify({"ok": True, "mensaje": "Deteniendo scraper..."})
+    return jsonify({"ok": False, "mensaje": "El scraper no esta activo"}), 409
+
+
+@app.route("/api/scraper_letrasdecarnaval/progreso")
+def ldc_scraper_progreso():
+    """SSE endpoint: envia progreso cada 2s hasta que el scraper termine."""
+    def generate():
+        while True:
+            estado = ldc_progreso()
+            yield f"data: {json.dumps(estado)}\n\n"
+            if estado["terminado"] or not estado["running"]:
+                break
+            time.sleep(2)
+    return Response(generate(), mimetype="text/event-stream",
+                    headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+# =========================
+# API: IMPORTADOR HUGGINGFACE
+# =========================
+
+@app.route("/api/importar_huggingface", methods=["POST"])
+def lanzar_importador_huggingface():
+    data = request.json or {}
+    solo_accurate = data.get("solo_accurate", False)
+    resultado = ejecutar_importador_huggingface(solo_accurate=solo_accurate)
+    return jsonify(resultado)
+
+
+# =========================
+# API: ESTADÍSTICAS POR FUENTE
+# =========================
+
+@app.route("/api/estadisticas_fuentes")
+def estadisticas_fuentes():
+    """Estadísticas desglosadas por fuente de datos."""
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT fuente, COUNT(*) as total,
+               COUNT(DISTINCT anio) as anios,
+               COUNT(DISTINCT modalidad) as modalidades,
+               COUNT(DISTINCT agrupacion) as agrupaciones,
+               AVG(calidad) as calidad_media,
+               SUM(verificado) as verificadas
+        FROM letras
+        GROUP BY fuente
+        ORDER BY total DESC
+    """)
+    fuentes = []
+    for r in cursor.fetchall():
+        fuentes.append({
+            "fuente": r["fuente"] or "desconocida",
+            "total": r["total"],
+            "anios": r["anios"],
+            "modalidades": r["modalidades"],
+            "agrupaciones": r["agrupaciones"],
+            "calidad_media": round(r["calidad_media"] or 0, 1),
+            "verificadas": r["verificadas"] or 0,
+        })
+
+    conn.close()
+    return jsonify({"fuentes": fuentes})
+
+
+# =========================
+# API: CROSS-REFERENCE (cruzar fuentes)
+# =========================
+
+@app.route("/api/cross_reference")
+def cross_reference():
+    """Identifica letras que existen en múltiples fuentes vs exclusivas."""
+    conn = get_db()
+    cursor = conn.cursor()
+
+    # Letras con mismo hash en diferentes fuentes
+    cursor.execute("""
+        SELECT contenido_hash, GROUP_CONCAT(DISTINCT fuente) as fuentes,
+               COUNT(DISTINCT fuente) as num_fuentes, COUNT(*) as copias
+        FROM letras
+        WHERE contenido_hash IS NOT NULL
+        GROUP BY contenido_hash
+        HAVING num_fuentes > 1
+    """)
+    compartidas = cursor.fetchall()
+
+    # Conteo por fuente exclusiva
+    cursor.execute("""
+        SELECT fuente, COUNT(*) as exclusivas
+        FROM letras
+        WHERE contenido_hash IN (
+            SELECT contenido_hash FROM letras
+            WHERE contenido_hash IS NOT NULL
+            GROUP BY contenido_hash
+            HAVING COUNT(DISTINCT fuente) = 1
+        )
+        GROUP BY fuente
+    """)
+    exclusivas = {r["fuente"]: r["exclusivas"] for r in cursor.fetchall()}
+
+    conn.close()
+
+    return jsonify({
+        "compartidas_entre_fuentes": len(compartidas),
+        "exclusivas_por_fuente": exclusivas,
+        "total_cruces": sum(r["copias"] for r in compartidas),
+    })
 
 
 # =========================

@@ -79,6 +79,7 @@ def migrate_db():
         ("idx_tipo_pieza", "tipo_pieza"),
         ("idx_agrupacion", "agrupacion"),
         ("idx_contenido_hash", "contenido_hash"),
+        ("idx_fuente", "fuente"),
     ]
     for idx_name, col in indices:
         if col in columnas or col in nuevas_columnas:

@@ -91,18 +91,62 @@
         </div>
     </div>
 
+    <!-- FUENTES -->
+    <div class="admin-stats" style="margin-top:1rem;">
+        <h3 style="font-size:0.9rem;color:var(--text-secondary);margin-bottom:0.5rem;">Letras por fuente</h3>
+        <div id="fuentesStats" class="admin-stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+            <div class="admin-stat"><span class="val">--</span><span class="lbl">Cargando...</span></div>
+        </div>
+    </div>
+
     <!-- GRID ACCIONES -->
     <div class="admin-grid">
 
-        <!-- SCRAPER -->
+        <!-- SCRAPER ORIGINAL -->
         <div class="admin-card">
-            <h2>Scraper</h2>
-            <p>Ejecuta el scraper para recoger nuevas letras del blog fuente.</p>
+            <h2>Scraper - Letras Desde el Paraiso</h2>
+            <p>Blog fuente original. Recoge nuevas letras por paginaci&oacute;n.</p>
             <div class="actions">
                 <input type="number" id="maxPaginas" placeholder="Max paginas" min="1" max="100" style="width:120px">
                 <button class="btn-primary" onclick="ejecutarScraper()">Ejecutar</button>
             </div>
             <div class="result-box" id="resScraper">Listo para ejecutar</div>
+        </div>
+
+        <!-- SCRAPER LETRASDECARNAVAL -->
+        <div class="admin-card">
+            <h2>Scraper - LetrasDeCarnaval.com</h2>
+            <p>~15.000 letras. Descarga solo las nuevas autom&aacute;ticamente. Puedes parar y continuar cuando quieras.</p>
+            <div class="actions">
+                <button class="btn-primary" id="btnLdcIniciar" onclick="ldcIniciar()">Escanear nuevas</button>
+                <button class="btn-secondary" id="btnLdcDetener" onclick="ldcDetener()" style="display:none">Detener</button>
+            </div>
+            <div id="ldcProgress" style="margin-top:0.8rem;display:none;">
+                <div style="background:var(--bg-hover);border-radius:4px;height:22px;overflow:hidden;margin-bottom:0.5rem;">
+                    <div id="ldcBar" style="height:100%;background:var(--accent);width:0%;transition:width 0.5s;border-radius:4px;display:flex;align-items:center;justify-content:center;">
+                        <span id="ldcPct" style="font-size:0.7rem;font-weight:700;color:#fff;"></span>
+                    </div>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.3rem;text-align:center;font-size:0.75rem;margin-bottom:0.5rem;">
+                    <span style="color:var(--success);">+<b id="ldcNuevas">0</b> nuevas</span>
+                    <span style="color:var(--text-muted);"><b id="ldcDup">0</b> duplicadas</span>
+                    <span style="color:var(--warning);"><b id="ldcErr">0</b> errores</span>
+                </div>
+            </div>
+            <div class="result-box" id="resScraperLDC">Listo para ejecutar</div>
+        </div>
+
+        <!-- IMPORTADOR HUGGINGFACE -->
+        <div class="admin-card">
+            <h2>Importar - HuggingFace Dataset</h2>
+            <p>Dataset abierto CC BY-SA 4.0. ~1.184 letras con autor y metadata verificada.</p>
+            <div class="actions">
+                <label style="font-size:0.8rem;color:var(--text-secondary);display:flex;align-items:center;gap:0.3rem;">
+                    <input type="checkbox" id="hfSoloAccurate"> Solo accurate
+                </label>
+                <button class="btn-primary" onclick="ejecutarHuggingFace()">Importar</button>
+            </div>
+            <div class="result-box" id="resHuggingFace">Listo para importar</div>
         </div>
 
         <!-- ENRIQUECER -->
@@ -158,6 +202,16 @@
             <div class="result-box" id="resDataset">Listo</div>
         </div>
 
+        <!-- CROSS-REFERENCE -->
+        <div class="admin-card">
+            <h2>Cross-Reference Fuentes</h2>
+            <p>Analiza letras compartidas y exclusivas entre las diferentes fuentes de datos.</p>
+            <div class="actions">
+                <button class="btn-primary" onclick="crossReference()">Analizar</button>
+            </div>
+            <div class="result-box" id="resCrossRef">Listo</div>
+        </div>
+
         <!-- EXPORTAR -->
         <div class="admin-card">
             <h2>Exportar Version Estatica</h2>
@@ -176,8 +230,25 @@ fetch("/api/estadisticas").then(r=>r.json()).then(s=>{
     document.getElementById("aTotal").textContent = s.total_letras.toLocaleString("es-ES");
     document.getElementById("aVerificadas").textContent = s.verificadas;
     document.getElementById("aCalidad").textContent = s.calidad_media + "/100";
-    document.getElementById("aAños").textContent = s.total_años;
+    document.getElementById("aAños").textContent = s.total_anios;
     document.getElementById("aModalidades").textContent = s.total_modalidades;
+});
+
+// Cargar stats por fuente
+fetch("/api/estadisticas_fuentes").then(r=>r.json()).then(d=>{
+    const container = document.getElementById("fuentesStats");
+    if(!d.fuentes || d.fuentes.length===0){
+        container.innerHTML='<div class="admin-stat"><span class="val">0</span><span class="lbl">Sin datos</span></div>';
+        return;
+    }
+    const colors = {"letrasdesdeelparaiso":"var(--accent)","letrasdecarnaval":"var(--gold)","huggingface":"var(--success)"};
+    container.innerHTML = d.fuentes.map(f=>`
+        <div class="admin-stat">
+            <span class="val" style="color:${colors[f.fuente]||'var(--accent)'}">${f.total.toLocaleString("es-ES")}</span>
+            <span class="lbl">${f.fuente}</span>
+            <span style="font-size:0.65rem;color:var(--text-muted)">${f.agrupaciones} agrup. | ${f.anios} a&ntilde;os</span>
+        </div>
+    `).join("");
 });
 
 function setResult(id, text, type) {
@@ -195,7 +266,96 @@ function ejecutarScraper() {
     .then(d=>{
         setResult("resScraper",
             `Nuevas: ${d.nuevas}\nDuplicadas: ${d.duplicadas}\nErrores: ${d.errores}\nPaginas: ${d.paginas}`, "success");
+        recargarFuentes();
     }).catch(e => setResult("resScraper", "Error: " + e.message));
+}
+
+let ldcEventSource = null;
+
+function ldcIniciar() {
+    fetch("/api/scraper_letrasdecarnaval/iniciar", {method:"POST"})
+    .then(r=>r.json())
+    .then(d=>{
+        if(!d.ok){ setResult("resScraperLDC", d.mensaje, "working"); return; }
+        // Mostrar UI de progreso
+        document.getElementById("btnLdcIniciar").style.display="none";
+        document.getElementById("btnLdcDetener").style.display="inline-block";
+        document.getElementById("ldcProgress").style.display="block";
+        setResult("resScraperLDC", "Iniciando...", "working");
+        // Conectar SSE
+        ldcConectarSSE();
+    }).catch(e => setResult("resScraperLDC", "Error: " + e.message));
+}
+
+function ldcDetener() {
+    fetch("/api/scraper_letrasdecarnaval/detener", {method:"POST"})
+    .then(r=>r.json())
+    .then(d=>{ setResult("resScraperLDC", d.mensaje, "working"); })
+    .catch(e => setResult("resScraperLDC", "Error: " + e.message));
+}
+
+function ldcConectarSSE() {
+    if(ldcEventSource) ldcEventSource.close();
+    ldcEventSource = new EventSource("/api/scraper_letrasdecarnaval/progreso");
+
+    ldcEventSource.onmessage = function(e) {
+        const d = JSON.parse(e.data);
+        // Actualizar barra
+        document.getElementById("ldcBar").style.width = d.porcentaje + "%";
+        document.getElementById("ldcPct").textContent = d.porcentaje + "%";
+        // Actualizar contadores
+        document.getElementById("ldcNuevas").textContent = d.nuevas;
+        document.getElementById("ldcDup").textContent = d.duplicadas;
+        document.getElementById("ldcErr").textContent = d.errores;
+        // Mensaje
+        let msg = d.mensaje;
+        if(d.ultima_letra) msg += "\n" + d.ultima_letra;
+        setResult("resScraperLDC", msg, d.running ? "working" : "success");
+
+        if(d.terminado || !d.running) {
+            ldcEventSource.close();
+            ldcEventSource = null;
+            document.getElementById("btnLdcIniciar").style.display="inline-block";
+            document.getElementById("btnLdcDetener").style.display="none";
+            recargarFuentes();
+        }
+    };
+
+    ldcEventSource.onerror = function() {
+        ldcEventSource.close();
+        ldcEventSource = null;
+        document.getElementById("btnLdcIniciar").style.display="inline-block";
+        document.getElementById("btnLdcDetener").style.display="none";
+    };
+}
+
+function ejecutarHuggingFace() {
+    setResult("resHuggingFace", "Descargando dataset desde HuggingFace...", "working");
+    const soloAccurate = document.getElementById("hfSoloAccurate").checked;
+    fetch("/api/importar_huggingface", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({solo_accurate: soloAccurate})})
+    .then(r=>r.json())
+    .then(d=>{
+        setResult("resHuggingFace",
+            `Nuevas: ${d.nuevas}\nDuplicadas: ${d.duplicadas}\nErrores: ${d.errores}\nDescargados: ${d.total_descargados}\nConjuntos: ${d.conjuntos.join(", ")}`, "success");
+        recargarFuentes();
+    }).catch(e => setResult("resHuggingFace", "Error: " + e.message));
+}
+
+function recargarFuentes() {
+    fetch("/api/estadisticas_fuentes").then(r=>r.json()).then(d=>{
+        const container = document.getElementById("fuentesStats");
+        const colors = {"letrasdesdeelparaiso":"var(--accent)","letrasdecarnaval":"var(--gold)","huggingface":"var(--success)"};
+        container.innerHTML = d.fuentes.map(f=>`
+            <div class="admin-stat">
+                <span class="val" style="color:${colors[f.fuente]||'var(--accent)'}">${f.total.toLocaleString("es-ES")}</span>
+                <span class="lbl">${f.fuente}</span>
+                <span style="font-size:0.65rem;color:var(--text-muted)">${f.agrupaciones} agrup. | ${f.anios} a&ntilde;os</span>
+            </div>
+        `).join("");
+    });
+    fetch("/api/estadisticas").then(r=>r.json()).then(s=>{
+        document.getElementById("aTotal").textContent = s.total_letras.toLocaleString("es-ES");
+    });
 }
 
 function enriquecer() {
@@ -249,6 +409,23 @@ function generarDataset() {
     .then(d=>{
         setResult("resDataset", `Registros: ${d.registros}\nFormato: ${d.formato}\nArchivo: ${d.archivo}`, "success");
     }).catch(e => setResult("resDataset", "Error: " + e.message));
+}
+
+function crossReference() {
+    setResult("resCrossRef", "Analizando cruces entre fuentes...", "working");
+    fetch("/api/cross_reference")
+    .then(r=>r.json())
+    .then(d=>{
+        let msg = `Letras compartidas entre fuentes: ${d.compartidas_entre_fuentes}`;
+        msg += `\nTotal copias cruzadas: ${d.total_cruces}`;
+        if(d.exclusivas_por_fuente) {
+            msg += `\n\nExclusivas por fuente:`;
+            for(const [fuente, count] of Object.entries(d.exclusivas_por_fuente)) {
+                msg += `\n  ${fuente}: ${count.toLocaleString("es-ES")}`;
+            }
+        }
+        setResult("resCrossRef", msg, "success");
+    }).catch(e => setResult("resCrossRef", "Error: " + e.message));
 }
 
 function exportar() {
