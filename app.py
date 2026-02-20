@@ -11,6 +11,7 @@ from metadata_extractor import extraer_metadata, normalizar_letra, evaluar_calid
 from scraper import ejecutar_scraper
 from scraper_letrasdecarnaval import iniciar_scraper as ldc_iniciar, detener_scraper as ldc_detener, obtener_progreso as ldc_progreso
 from scraper_huggingface import ejecutar_importador_huggingface
+from poetry_analyzer import analizar_letra, analizar_corpus
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 app = Flask(__name__)
@@ -32,6 +33,16 @@ def index():
 @app.route("/admin")
 def admin():
     return render_template("admin.html")
+
+
+@app.route("/autor/<nombre>")
+def pagina_autor(nombre):
+    return render_template("perfil_autor.html", nombre=nombre)
+
+
+@app.route("/agrupacion/<nombre>")
+def pagina_agrupacion(nombre):
+    return render_template("perfil_agrupacion.html", nombre=nombre)
 
 
 # =========================
@@ -941,7 +952,9 @@ def palabras_frecuentes():
 
 @app.route("/api/autor/<nombre>")
 def detalle_autor(nombre):
-    """Ficha completa de un autor con todas sus obras."""
+    """Ficha completa de un autor con stats generales + poéticas agregadas."""
+    import json as _json
+    from collections import Counter as _Counter
     conn = get_db()
     cursor = conn.cursor()
 
@@ -952,7 +965,11 @@ def detalle_autor(nombre):
                GROUP_CONCAT(DISTINCT modalidad) as modalidades,
                MIN(anio) as primer_anio,
                MAX(anio) as ultimo_anio,
-               AVG(LENGTH(contenido)) as longitud_media
+               AVG(LENGTH(contenido)) as longitud_media,
+               AVG(calidad) as calidad_media,
+               AVG(score_poetico) as score_poetico_medio,
+               AVG(densidad_lexica) as densidad_media,
+               AVG(n_versos) as versos_medio
         FROM letras WHERE autor LIKE ?
     """, (f"%{nombre}%",))
     stats = cursor.fetchone()
@@ -961,24 +978,669 @@ def detalle_autor(nombre):
         conn.close()
         return jsonify({"error": "Autor no encontrado"}), 404
 
+    # Obras completas con datos poéticos
     cursor.execute("""
-        SELECT id, titulo, anio, modalidad, tipo_pieza, agrupacion
+        SELECT id, titulo, anio, modalidad, tipo_pieza, agrupacion,
+               score_poetico, nombre_metro, tipo_rima, esquema_rima,
+               n_estrofas, n_versos, densidad_lexica, versos_destacados
         FROM letras WHERE autor LIKE ?
         ORDER BY anio DESC, titulo
     """, (f"%{nombre}%",))
     obras = [dict(r) for r in cursor.fetchall()]
+
+    # Agrupaciones con conteo
+    cursor.execute("""
+        SELECT agrupacion, COUNT(*) as cnt, MIN(anio) as desde, MAX(anio) as hasta
+        FROM letras WHERE autor LIKE ? AND agrupacion IS NOT NULL
+        GROUP BY agrupacion ORDER BY cnt DESC
+    """, (f"%{nombre}%",))
+    agrupaciones_detalle = [dict(r) for r in cursor.fetchall()]
+
+    # Actividad por año
+    cursor.execute("""
+        SELECT anio, COUNT(*) as cnt, AVG(score_poetico) as score_medio
+        FROM letras WHERE autor LIKE ? AND anio IS NOT NULL
+        GROUP BY anio ORDER BY anio
+    """, (f"%{nombre}%",))
+    por_anio = [{"anio": r["anio"], "cnt": r["cnt"], "score_medio": round(r["score_medio"] or 0, 1)}
+                for r in cursor.fetchall()]
+
+    # Tipos de pieza más usados
+    cursor.execute("""
+        SELECT tipo_pieza, COUNT(*) as cnt
+        FROM letras WHERE autor LIKE ? AND tipo_pieza IS NOT NULL
+        GROUP BY tipo_pieza ORDER BY cnt DESC
+    """, (f"%{nombre}%",))
+    tipos_pieza = [{"tipo": r["tipo_pieza"], "cnt": r["cnt"]} for r in cursor.fetchall()]
+
+    # Estadísticas poéticas agregadas (de letras ya analizadas)
+    cursor.execute("""
+        SELECT nombre_metro, COUNT(*) as cnt
+        FROM letras WHERE autor LIKE ? AND nombre_metro IS NOT NULL
+        GROUP BY nombre_metro ORDER BY cnt DESC LIMIT 5
+    """, (f"%{nombre}%",))
+    metros = [{"metro": r["nombre_metro"], "cnt": r["cnt"]} for r in cursor.fetchall()]
+
+    cursor.execute("""
+        SELECT tipo_rima, COUNT(*) as cnt
+        FROM letras WHERE autor LIKE ? AND tipo_rima IS NOT NULL
+        GROUP BY tipo_rima ORDER BY cnt DESC
+    """, (f"%{nombre}%",))
+    rimas = [{"tipo": r["tipo_rima"], "cnt": r["cnt"]} for r in cursor.fetchall()]
+
+    cursor.execute("""
+        SELECT esquema_rima, COUNT(*) as cnt
+        FROM letras WHERE autor LIKE ? AND esquema_rima IS NOT NULL
+        GROUP BY esquema_rima ORDER BY cnt DESC LIMIT 5
+    """, (f"%{nombre}%",))
+    esquemas = [{"esquema": r["esquema_rima"], "cnt": r["cnt"]} for r in cursor.fetchall()]
+
+    # Top letras por score poético
+    cursor.execute("""
+        SELECT id, titulo, anio, modalidad, tipo_pieza, agrupacion,
+               score_poetico, nombre_metro, tipo_rima
+        FROM letras WHERE autor LIKE ? AND score_poetico > 0
+        ORDER BY score_poetico DESC LIMIT 5
+    """, (f"%{nombre}%",))
+    top_letras = [dict(r) for r in cursor.fetchall()]
+
+    # Léxico gaditano más frecuente del autor (agregado)
+    cursor.execute("""
+        SELECT lexico_gaditano FROM letras
+        WHERE autor LIKE ? AND lexico_gaditano IS NOT NULL AND lexico_gaditano != '[]'
+        LIMIT 200
+    """, (f"%{nombre}%",))
+    lexico_counter = _Counter()
+    for row in cursor.fetchall():
+        try:
+            palabras = _json.loads(row["lexico_gaditano"])
+            for p in palabras:
+                lexico_counter[p] += 1
+        except Exception:
+            pass
+    lexico_top = [{"palabra": p, "cnt": c} for p, c in lexico_counter.most_common(15)]
+
+    # Figuras retóricas más usadas
+    cursor.execute("""
+        SELECT figuras_retoricas FROM letras
+        WHERE autor LIKE ? AND figuras_retoricas IS NOT NULL AND figuras_retoricas != '[]'
+        LIMIT 200
+    """, (f"%{nombre}%",))
+    figuras_counter = _Counter()
+    for row in cursor.fetchall():
+        try:
+            figuras = _json.loads(row["figuras_retoricas"])
+            for f in figuras:
+                if isinstance(f, dict) and "figura" in f:
+                    figuras_counter[f["figura"]] += 1
+        except Exception:
+            pass
+    figuras_top = [{"figura": f, "cnt": c} for f, c in figuras_counter.most_common(6)]
 
     conn.close()
 
     return jsonify({
         "autor": nombre,
         "total_obras": stats["total"],
-        "agrupaciones": stats["agrupaciones"],
+        "total_agrupaciones": stats["agrupaciones"],
         "anios_activos": stats["anios"],
         "modalidades": stats["modalidades"],
-        "periodo": f"{stats['primer_anio'] or '?'} - {stats['ultimo_anio'] or '?'}",
+        "periodo": f"{stats['primer_anio'] or '?'} – {stats['ultimo_anio'] or '?'}",
         "longitud_media": round(stats["longitud_media"] or 0),
-        "obras": obras
+        "calidad_media": round(stats["calidad_media"] or 0, 1),
+        "score_poetico_medio": round(stats["score_poetico_medio"] or 0, 1),
+        "densidad_lexica_media": round(stats["densidad_media"] or 0, 1),
+        "versos_por_obra": round(stats["versos_medio"] or 0, 1),
+        "agrupaciones_detalle": agrupaciones_detalle,
+        "actividad_anual": por_anio,
+        "tipos_pieza": tipos_pieza,
+        "metros_frecuentes": metros,
+        "tipos_rima": rimas,
+        "esquemas_frecuentes": esquemas,
+        "top_letras_poeticas": top_letras,
+        "lexico_gaditano": lexico_top,
+        "figuras_frecuentes": figuras_top,
+        "obras": obras,
+    })
+
+
+# =========================
+# API: PERFIL DE AGRUPACIÓN
+# =========================
+
+@app.route("/api/agrupacion/<nombre>")
+def detalle_agrupacion(nombre):
+    """Ficha completa de una agrupación con historia, autores y análisis poético."""
+    import json as _json
+    from collections import Counter as _Counter
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT COUNT(*) as total,
+               COUNT(DISTINCT autor) as autores,
+               COUNT(DISTINCT anio) as anios,
+               COUNT(DISTINCT modalidad) as n_modalidades,
+               GROUP_CONCAT(DISTINCT modalidad) as modalidades,
+               MIN(anio) as primer_anio,
+               MAX(anio) as ultimo_anio,
+               AVG(LENGTH(contenido)) as longitud_media,
+               AVG(calidad) as calidad_media,
+               AVG(score_poetico) as score_poetico_medio,
+               AVG(densidad_lexica) as densidad_media
+        FROM letras WHERE agrupacion LIKE ?
+    """, (f"%{nombre}%",))
+    stats = cursor.fetchone()
+
+    if not stats or stats["total"] == 0:
+        conn.close()
+        return jsonify({"error": "Agrupación no encontrada"}), 404
+
+    # Obras con datos poéticos
+    cursor.execute("""
+        SELECT id, titulo, anio, modalidad, tipo_pieza, autor,
+               score_poetico, nombre_metro, tipo_rima, esquema_rima,
+               n_estrofas, n_versos, versos_destacados
+        FROM letras WHERE agrupacion LIKE ?
+        ORDER BY anio DESC, tipo_pieza, titulo
+    """, (f"%{nombre}%",))
+    obras = [dict(r) for r in cursor.fetchall()]
+
+    # Autores que han escrito para esta agrupación
+    cursor.execute("""
+        SELECT autor, COUNT(*) as cnt, MIN(anio) as desde, MAX(anio) as hasta
+        FROM letras WHERE agrupacion LIKE ? AND autor IS NOT NULL AND autor != ''
+        GROUP BY autor ORDER BY cnt DESC
+    """, (f"%{nombre}%",))
+    autores_detalle = [dict(r) for r in cursor.fetchall()]
+
+    # Actividad por año
+    cursor.execute("""
+        SELECT anio, COUNT(*) as cnt,
+               GROUP_CONCAT(DISTINCT tipo_pieza) as tipos,
+               AVG(score_poetico) as score_medio
+        FROM letras WHERE agrupacion LIKE ? AND anio IS NOT NULL
+        GROUP BY anio ORDER BY anio
+    """, (f"%{nombre}%",))
+    por_anio = [{"anio": r["anio"], "cnt": r["cnt"],
+                 "tipos": r["tipos"], "score_medio": round(r["score_medio"] or 0, 1)}
+                for r in cursor.fetchall()]
+
+    # Tipos de pieza
+    cursor.execute("""
+        SELECT tipo_pieza, COUNT(*) as cnt
+        FROM letras WHERE agrupacion LIKE ? AND tipo_pieza IS NOT NULL
+        GROUP BY tipo_pieza ORDER BY cnt DESC
+    """, (f"%{nombre}%",))
+    tipos_pieza = [{"tipo": r["tipo_pieza"], "cnt": r["cnt"]} for r in cursor.fetchall()]
+
+    # Análisis poético agregado
+    cursor.execute("""
+        SELECT nombre_metro, COUNT(*) as cnt
+        FROM letras WHERE agrupacion LIKE ? AND nombre_metro IS NOT NULL
+        GROUP BY nombre_metro ORDER BY cnt DESC LIMIT 5
+    """, (f"%{nombre}%",))
+    metros = [{"metro": r["nombre_metro"], "cnt": r["cnt"]} for r in cursor.fetchall()]
+
+    cursor.execute("""
+        SELECT tipo_rima, COUNT(*) as cnt
+        FROM letras WHERE agrupacion LIKE ? AND tipo_rima IS NOT NULL
+        GROUP BY tipo_rima ORDER BY cnt DESC
+    """, (f"%{nombre}%",))
+    rimas = [{"tipo": r["tipo_rima"], "cnt": r["cnt"]} for r in cursor.fetchall()]
+
+    # Top letras
+    cursor.execute("""
+        SELECT id, titulo, anio, modalidad, tipo_pieza, autor,
+               score_poetico, nombre_metro, tipo_rima
+        FROM letras WHERE agrupacion LIKE ? AND score_poetico > 0
+        ORDER BY score_poetico DESC LIMIT 5
+    """, (f"%{nombre}%",))
+    top_letras = [dict(r) for r in cursor.fetchall()]
+
+    # Léxico gaditano
+    cursor.execute("""
+        SELECT lexico_gaditano FROM letras
+        WHERE agrupacion LIKE ? AND lexico_gaditano IS NOT NULL AND lexico_gaditano != '[]'
+        LIMIT 200
+    """, (f"%{nombre}%",))
+    lexico_counter = _Counter()
+    for row in cursor.fetchall():
+        try:
+            for p in _json.loads(row["lexico_gaditano"]):
+                lexico_counter[p] += 1
+        except Exception:
+            pass
+    lexico_top = [{"palabra": p, "cnt": c} for p, c in lexico_counter.most_common(15)]
+
+    # Figuras retóricas
+    cursor.execute("""
+        SELECT figuras_retoricas FROM letras
+        WHERE agrupacion LIKE ? AND figuras_retoricas IS NOT NULL AND figuras_retoricas != '[]'
+        LIMIT 200
+    """, (f"%{nombre}%",))
+    figuras_counter = _Counter()
+    for row in cursor.fetchall():
+        try:
+            for f in _json.loads(row["figuras_retoricas"]):
+                if isinstance(f, dict) and "figura" in f:
+                    figuras_counter[f["figura"]] += 1
+        except Exception:
+            pass
+    figuras_top = [{"figura": f, "cnt": c} for f, c in figuras_counter.most_common(6)]
+
+    # Versos más destacados de la agrupación (top 5 globales)
+    cursor.execute("""
+        SELECT titulo, anio, versos_destacados FROM letras
+        WHERE agrupacion LIKE ? AND versos_destacados IS NOT NULL
+              AND versos_destacados != '[]' AND score_poetico > 0
+        ORDER BY score_poetico DESC LIMIT 20
+    """, (f"%{nombre}%",))
+    versos_icono = []
+    for row in cursor.fetchall():
+        try:
+            vv = _json.loads(row["versos_destacados"])
+            if vv:
+                versos_icono.append({
+                    "verso": vv[0],
+                    "titulo": row["titulo"],
+                    "anio": row["anio"],
+                })
+        except Exception:
+            pass
+
+    conn.close()
+
+    return jsonify({
+        "agrupacion": nombre,
+        "total_letras": stats["total"],
+        "total_autores": stats["autores"],
+        "anios_activos": stats["anios"],
+        "modalidades": stats["modalidades"],
+        "periodo": f"{stats['primer_anio'] or '?'} – {stats['ultimo_anio'] or '?'}",
+        "longitud_media": round(stats["longitud_media"] or 0),
+        "calidad_media": round(stats["calidad_media"] or 0, 1),
+        "score_poetico_medio": round(stats["score_poetico_medio"] or 0, 1),
+        "densidad_lexica_media": round(stats["densidad_media"] or 0, 1),
+        "autores_detalle": autores_detalle,
+        "actividad_anual": por_anio,
+        "tipos_pieza": tipos_pieza,
+        "metros_frecuentes": metros,
+        "tipos_rima": rimas,
+        "top_letras_poeticas": top_letras,
+        "lexico_gaditano": lexico_top,
+        "figuras_frecuentes": figuras_top,
+        "versos_icono": versos_icono[:8],
+        "obras": obras,
+    })
+
+
+# =========================
+# API: LISTADO DE AUTORES
+# =========================
+
+@app.route("/api/autores")
+def listado_autores():
+    """Listado de autores con estadísticas básicas."""
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT autor,
+               COUNT(*) as total_obras,
+               COUNT(DISTINCT agrupacion) as agrupaciones,
+               COUNT(DISTINCT anio) as anios_activos,
+               MIN(anio) as primer_anio,
+               MAX(anio) as ultimo_anio,
+               AVG(score_poetico) as score_medio,
+               GROUP_CONCAT(DISTINCT modalidad) as modalidades
+        FROM letras
+        WHERE autor IS NOT NULL AND autor != ''
+        GROUP BY autor
+        ORDER BY total_obras DESC
+        LIMIT 200
+    """)
+    autores = []
+    for r in cursor.fetchall():
+        autores.append({
+            "autor": r["autor"],
+            "total_obras": r["total_obras"],
+            "agrupaciones": r["agrupaciones"],
+            "anios_activos": r["anios_activos"],
+            "periodo": f"{r['primer_anio'] or '?'} – {r['ultimo_anio'] or '?'}",
+            "score_medio": round(r["score_medio"] or 0, 1),
+            "modalidades": r["modalidades"],
+        })
+    conn.close()
+    return jsonify({"autores": autores, "total": len(autores)})
+
+
+# =========================
+# API: LISTADO DE AGRUPACIONES
+# =========================
+
+@app.route("/api/agrupaciones")
+def listado_agrupaciones():
+    """Listado de agrupaciones con estadísticas básicas."""
+    modalidad = request.args.get("modalidad")
+    conn = get_db()
+    cursor = conn.cursor()
+    query = """
+        SELECT agrupacion,
+               COUNT(*) as total_letras,
+               COUNT(DISTINCT autor) as autores,
+               COUNT(DISTINCT anio) as anios_activos,
+               MIN(anio) as primer_anio,
+               MAX(anio) as ultimo_anio,
+               AVG(score_poetico) as score_medio,
+               GROUP_CONCAT(DISTINCT modalidad) as modalidades
+        FROM letras
+        WHERE agrupacion IS NOT NULL AND agrupacion != ''
+    """
+    params = []
+    if modalidad:
+        query += " AND modalidad = ?"
+        params.append(modalidad)
+    query += " GROUP BY agrupacion ORDER BY total_letras DESC LIMIT 300"
+    cursor.execute(query, params)
+    agrupaciones = []
+    for r in cursor.fetchall():
+        agrupaciones.append({
+            "agrupacion": r["agrupacion"],
+            "total_letras": r["total_letras"],
+            "autores": r["autores"],
+            "anios_activos": r["anios_activos"],
+            "periodo": f"{r['primer_anio'] or '?'} – {r['ultimo_anio'] or '?'}",
+            "score_medio": round(r["score_medio"] or 0, 1),
+            "modalidades": r["modalidades"],
+        })
+    conn.close()
+    return jsonify({"agrupaciones": agrupaciones, "total": len(agrupaciones)})
+
+
+# =========================
+# API: ANÁLISIS POÉTICO
+# =========================
+
+@app.route("/api/analisis_poetico/<int:letra_id>")
+def analisis_poetico_letra(letra_id):
+    """Análisis poético completo de una letra individual."""
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM letras WHERE id=?", (letra_id,))
+    row = cursor.fetchone()
+    conn.close()
+
+    if not row:
+        return jsonify({"error": "Letra no encontrada"}), 404
+
+    row = dict(row)
+
+    # Si ya está analizada y guardada, devolver caché
+    if row.get("analisis_poetico"):
+        try:
+            cached = json.loads(row["analisis_poetico"])
+            cached["desde_cache"] = True
+            return jsonify(cached)
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    contenido = row.get("contenido", "")
+    if not contenido:
+        return jsonify({"error": "La letra no tiene contenido"}), 400
+
+    analisis = analizar_letra(contenido, row.get("titulo", ""))
+
+    if "error" in analisis:
+        return jsonify(analisis), 422
+
+    # Guardar en BD para no recalcular
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        UPDATE letras SET
+            metro_dominante=?, nombre_metro=?, coherencia_metrica=?,
+            esquema_rima=?, tipo_rima=?, score_poetico=?,
+            n_estrofas=?, n_versos=?, densidad_lexica=?,
+            versos_destacados=?, figuras_retoricas=?, lexico_gaditano=?,
+            analisis_poetico=?, fecha_analisis=datetime('now')
+        WHERE id=?
+    """, (
+        analisis["metrica"].get("metro_dominante"),
+        analisis["metrica"].get("nombre_metro"),
+        analisis["metrica"].get("coherencia_pct", 0),
+        analisis["rima"].get("esquema_predominante"),
+        analisis["rima"].get("tipo_rima"),
+        analisis["score_poetico"],
+        analisis["n_estrofas"],
+        analisis["n_versos"],
+        analisis["vocabulario"].get("densidad_lexica", 0),
+        json.dumps(analisis["versos_destacados"], ensure_ascii=False),
+        json.dumps(analisis["figuras_retoricas"], ensure_ascii=False),
+        json.dumps(analisis["vocabulario"].get("lexico_gaditano", []), ensure_ascii=False),
+        json.dumps(analisis, ensure_ascii=False),
+        letra_id,
+    ))
+    conn.commit()
+    conn.close()
+
+    return jsonify(analisis)
+
+
+@app.route("/api/analizar_corpus", methods=["POST"])
+def analizar_corpus_endpoint():
+    """
+    Analiza poéticamente un conjunto de letras y devuelve estadísticas agregadas.
+    Body JSON opcional: { modalidad, anio, tipo_pieza, limit }
+    """
+    data = request.json or {}
+    modalidad = data.get("modalidad")
+    anio = data.get("anio")
+    tipo_pieza = data.get("tipo_pieza")
+    limit = int(data.get("limit", 500))
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    query = """
+        SELECT id, titulo, contenido, modalidad, anio, tipo_pieza, agrupacion
+        FROM letras
+        WHERE contenido IS NOT NULL AND LENGTH(contenido) > 50
+    """
+    params = []
+    if modalidad:
+        query += " AND modalidad=?"
+        params.append(modalidad)
+    if anio:
+        query += " AND anio=?"
+        params.append(anio)
+    if tipo_pieza:
+        query += " AND tipo_pieza=?"
+        params.append(tipo_pieza)
+    query += " ORDER BY RANDOM() LIMIT ?"
+    params.append(limit)
+
+    cursor.execute(query, params)
+    letras = [dict(r) for r in cursor.fetchall()]
+    conn.close()
+
+    if not letras:
+        return jsonify({"error": "No hay letras que analizar con esos filtros"}), 404
+
+    resultado = analizar_corpus(letras)
+    resultado["filtros"] = {"modalidad": modalidad, "anio": anio, "tipo_pieza": tipo_pieza}
+    resultado["muestra"] = len(letras)
+    return jsonify(resultado)
+
+
+@app.route("/api/analizar_todo", methods=["POST"])
+def analizar_todo():
+    """
+    Analiza poéticamente TODAS las letras sin análisis previo y guarda en BD.
+    Pensado para ejecutar en segundo plano desde el admin.
+    """
+    data = request.json or {}
+    forzar = data.get("forzar", False)  # True para re-analizar incluso las ya analizadas
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    if forzar:
+        cursor.execute(
+            "SELECT id, titulo, contenido FROM letras WHERE contenido IS NOT NULL AND LENGTH(contenido) > 50"
+        )
+    else:
+        cursor.execute(
+            "SELECT id, titulo, contenido FROM letras WHERE contenido IS NOT NULL AND LENGTH(contenido) > 50 AND analisis_poetico IS NULL"
+        )
+    rows = cursor.fetchall()
+    conn.close()
+
+    analizadas = 0
+    errores = 0
+
+    for row in rows:
+        try:
+            analisis = analizar_letra(row["contenido"], row["titulo"] or "")
+            if "error" in analisis:
+                errores += 1
+                continue
+
+            conn = get_db()
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE letras SET
+                    metro_dominante=?, nombre_metro=?, coherencia_metrica=?,
+                    esquema_rima=?, tipo_rima=?, score_poetico=?,
+                    n_estrofas=?, n_versos=?, densidad_lexica=?,
+                    versos_destacados=?, figuras_retoricas=?, lexico_gaditano=?,
+                    analisis_poetico=?, fecha_analisis=datetime('now')
+                WHERE id=?
+            """, (
+                analisis["metrica"].get("metro_dominante"),
+                analisis["metrica"].get("nombre_metro"),
+                analisis["metrica"].get("coherencia_pct", 0),
+                analisis["rima"].get("esquema_predominante"),
+                analisis["rima"].get("tipo_rima"),
+                analisis["score_poetico"],
+                analisis["n_estrofas"],
+                analisis["n_versos"],
+                analisis["vocabulario"].get("densidad_lexica", 0),
+                json.dumps(analisis["versos_destacados"], ensure_ascii=False),
+                json.dumps(analisis["figuras_retoricas"], ensure_ascii=False),
+                json.dumps(analisis["vocabulario"].get("lexico_gaditano", []), ensure_ascii=False),
+                json.dumps(analisis, ensure_ascii=False),
+                row["id"],
+            ))
+            conn.commit()
+            conn.close()
+            analizadas += 1
+        except Exception:
+            errores += 1
+
+    return jsonify({
+        "analizadas": analizadas,
+        "errores": errores,
+        "total_procesadas": len(rows),
+    })
+
+
+@app.route("/api/estadisticas_poeticas")
+def estadisticas_poeticas():
+    """Estadísticas poéticas agregadas del corpus completo."""
+    conn = get_db()
+    cursor = conn.cursor()
+
+    # Solo letras ya analizadas
+    cursor.execute("SELECT COUNT(*) as total FROM letras WHERE analisis_poetico IS NOT NULL")
+    total_analizadas = cursor.fetchone()["total"]
+
+    cursor.execute("SELECT COUNT(*) as total FROM letras")
+    total_letras = cursor.fetchone()["total"]
+
+    if total_analizadas == 0:
+        conn.close()
+        return jsonify({
+            "total_analizadas": 0,
+            "total_letras": total_letras,
+            "mensaje": "Ejecuta el análisis poético desde el panel admin primero."
+        })
+
+    # Score poético medio
+    cursor.execute("SELECT AVG(score_poetico) as media FROM letras WHERE score_poetico > 0")
+    score_medio = cursor.fetchone()["media"] or 0
+
+    # Metros dominantes
+    cursor.execute("""
+        SELECT nombre_metro, COUNT(*) as cnt
+        FROM letras WHERE nombre_metro IS NOT NULL
+        GROUP BY nombre_metro ORDER BY cnt DESC LIMIT 10
+    """)
+    metros = [{"metro": r["nombre_metro"], "count": r["cnt"]} for r in cursor.fetchall()]
+
+    # Tipos de rima
+    cursor.execute("""
+        SELECT tipo_rima, COUNT(*) as cnt
+        FROM letras WHERE tipo_rima IS NOT NULL
+        GROUP BY tipo_rima ORDER BY cnt DESC
+    """)
+    rimas = [{"tipo": r["tipo_rima"], "count": r["cnt"]} for r in cursor.fetchall()]
+
+    # Esquemas más frecuentes
+    cursor.execute("""
+        SELECT esquema_rima, COUNT(*) as cnt
+        FROM letras WHERE esquema_rima IS NOT NULL
+        GROUP BY esquema_rima ORDER BY cnt DESC LIMIT 10
+    """)
+    esquemas = [{"esquema": r["esquema_rima"], "count": r["cnt"]} for r in cursor.fetchall()]
+
+    # Score poético por modalidad
+    cursor.execute("""
+        SELECT modalidad, AVG(score_poetico) as score_medio, COUNT(*) as total
+        FROM letras WHERE score_poetico > 0 AND modalidad IS NOT NULL
+        GROUP BY modalidad ORDER BY score_medio DESC
+    """)
+    scores_modalidad = [
+        {"modalidad": r["modalidad"], "score_medio": round(r["score_medio"], 1), "total": r["total"]}
+        for r in cursor.fetchall()
+    ]
+
+    # Densidad léxica media
+    cursor.execute("SELECT AVG(densidad_lexica) as media FROM letras WHERE densidad_lexica > 0")
+    densidad_media = cursor.fetchone()["media"] or 0
+
+    # Score poético por año (evolución)
+    cursor.execute("""
+        SELECT anio, AVG(score_poetico) as score_medio, COUNT(*) as total
+        FROM letras WHERE score_poetico > 0 AND anio IS NOT NULL
+        GROUP BY anio ORDER BY anio
+    """)
+    evolucion_score = [
+        {"anio": r["anio"], "score_medio": round(r["score_medio"], 1), "total": r["total"]}
+        for r in cursor.fetchall()
+    ]
+
+    # Letras con mayor score poético
+    cursor.execute("""
+        SELECT id, titulo, agrupacion, anio, modalidad, score_poetico, nombre_metro, tipo_rima
+        FROM letras WHERE score_poetico > 0
+        ORDER BY score_poetico DESC LIMIT 10
+    """)
+    top_letras = [dict(r) for r in cursor.fetchall()]
+
+    conn.close()
+
+    return jsonify({
+        "total_analizadas": total_analizadas,
+        "total_letras": total_letras,
+        "pct_analizadas": round(total_analizadas / max(total_letras, 1) * 100, 1),
+        "score_medio": round(score_medio, 1),
+        "densidad_lexica_media": round(densidad_media, 1),
+        "metros_dominantes": metros,
+        "tipos_rima": rimas,
+        "esquemas_frecuentes": esquemas,
+        "score_por_modalidad": scores_modalidad,
+        "evolucion_score": evolucion_score,
+        "top_letras_poeticas": top_letras,
     })
 
 

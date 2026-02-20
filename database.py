@@ -63,6 +63,21 @@ def migrate_db():
         "fecha_publicacion": "TEXT",
         "verificado": "INTEGER DEFAULT 0",
         "calidad": "INTEGER DEFAULT 0",
+        # Análisis poético
+        "metro_dominante": "TEXT",
+        "nombre_metro": "TEXT",
+        "coherencia_metrica": "INTEGER DEFAULT 0",
+        "esquema_rima": "TEXT",
+        "tipo_rima": "TEXT",
+        "score_poetico": "INTEGER DEFAULT 0",
+        "n_estrofas": "INTEGER DEFAULT 0",
+        "n_versos": "INTEGER DEFAULT 0",
+        "densidad_lexica": "REAL DEFAULT 0",
+        "versos_destacados": "TEXT",
+        "figuras_retoricas": "TEXT",
+        "lexico_gaditano": "TEXT",
+        "analisis_poetico": "TEXT",
+        "fecha_analisis": "TEXT",
     }
 
     for col, tipo in nuevas_columnas.items():

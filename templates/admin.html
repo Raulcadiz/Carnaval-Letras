@@ -221,6 +221,26 @@
             </div>
             <div class="result-box" id="resExport">Listo</div>
         </div>
+
+        <!-- ANÁLISIS POÉTICO -->
+        <div class="admin-card" style="border-color:var(--gold)">
+            <h2 style="color:var(--gold)">&#9997; An&aacute;lisis Po&eacute;tico del Corpus</h2>
+            <p>Analiza m&eacute;trica, rima y figuras ret&oacute;ricas de todas las letras del archivo. El an&aacute;lisis se guarda en la base de datos. Las letras ya analizadas no se repiten salvo que marques "forzar".</p>
+            <div class="actions">
+                <label style="font-size:0.8rem;color:var(--text-secondary);display:flex;align-items:center;gap:0.3rem;">
+                    <input type="checkbox" id="forzarAnalisis"> Forzar re-an&aacute;lisis
+                </label>
+                <button class="btn-primary" onclick="analizarCorpusAdmin()" style="background:var(--gold);color:#000">Analizar corpus completo</button>
+            </div>
+            <div class="result-box" id="resPoesia" id="resPoesia">Listo</div>
+            <div id="poeticaStatsAdmin" style="margin-top:0.8rem;display:none">
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.4rem;font-size:0.8rem;text-align:center;">
+                    <div class="admin-stat"><span class="val" id="pAdm_total" style="color:var(--gold)">--</span><span class="lbl">Analizadas</span></div>
+                    <div class="admin-stat"><span class="val" id="pAdm_score" style="color:var(--gold)">--</span><span class="lbl">Score medio</span></div>
+                    <div class="admin-stat"><span class="val" id="pAdm_metro" style="color:var(--gold)">--</span><span class="lbl">Metro + frecuente</span></div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -437,6 +457,50 @@ function exportar() {
             `Exportadas: ${d.exportadas}\nArchivos por año: ${d.archivos_año}\nArchivos por modalidad: ${d.archivos_modalidad}\nCarpeta: ${d.carpeta}`, "success");
     }).catch(e => setResult("resExport", "Error: " + e.message));
 }
+
+function analizarCorpusAdmin() {
+    const forzar = document.getElementById("forzarAnalisis").checked;
+    setResult("resPoesia", "Analizando corpus... esto puede tardar varios minutos según el tamaño del archivo.", "working");
+
+    fetch("/api/analizar_todo", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({forzar: forzar})
+    })
+    .then(r => r.json())
+    .then(d => {
+        setResult("resPoesia",
+            `Analizadas: ${d.analizadas}\nErrores: ${d.errores}\nTotal procesadas: ${d.total_procesadas}`,
+            "success"
+        );
+        // Cargar y mostrar stats poéticas del corpus
+        fetch("/api/estadisticas_poeticas")
+            .then(r => r.json())
+            .then(s => {
+                if (s.total_analizadas > 0) {
+                    document.getElementById("poeticaStatsAdmin").style.display = "block";
+                    document.getElementById("pAdm_total").textContent = s.total_analizadas.toLocaleString("es-ES");
+                    document.getElementById("pAdm_score").textContent = s.score_medio + "/100";
+                    const topMetro = (s.metros_dominantes || [])[0];
+                    document.getElementById("pAdm_metro").textContent = topMetro ? topMetro.metro : "—";
+                }
+            });
+    })
+    .catch(e => setResult("resPoesia", "Error: " + e.message));
+}
+
+// Cargar stats poéticas al inicio si hay datos
+fetch("/api/estadisticas_poeticas")
+    .then(r => r.json())
+    .then(s => {
+        if (s.total_analizadas > 0) {
+            document.getElementById("poeticaStatsAdmin").style.display = "block";
+            document.getElementById("pAdm_total").textContent = s.total_analizadas.toLocaleString("es-ES");
+            document.getElementById("pAdm_score").textContent = s.score_medio + "/100";
+            const topMetro = (s.metros_dominantes || [])[0];
+            document.getElementById("pAdm_metro").textContent = topMetro ? topMetro.metro : "—";
+        }
+    });
 </script>
 </body>
 </html>

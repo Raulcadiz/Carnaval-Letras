@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="pageTitle">Autor — Carnaval de Cádiz</title>
+    <meta name="description" content="Perfil de autor del Carnaval de Cádiz: obras, agrupaciones, análisis poético y estilo literario.">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/perfil.css">
+</head>
+<body>
+
+<header class="main-header perfil-header">
+    <div class="header-content">
+        <a href="/" class="header-back">&larr; Archivo del Carnaval</a>
+        <h1 class="logo" id="headerNombre">Cargando...</h1>
+        <p class="subtitle" id="headerSubtitle"></p>
+    </div>
+</header>
+
+<div class="perfil-layout" id="perfilLayout" style="display:none">
+
+    <!-- COLUMNA IZQUIERDA: FICHA -->
+    <aside class="perfil-aside">
+        <div class="ficha-card">
+            <div class="ficha-avatar autor-avatar" id="fichaAvatar"></div>
+            <h2 class="ficha-nombre" id="fichaNombre"></h2>
+            <div class="ficha-tipo">Autor del Carnaval de Cádiz</div>
+
+            <div class="ficha-stats">
+                <div class="ficha-stat">
+                    <span class="ficha-stat-num" id="fTotal">--</span>
+                    <span class="ficha-stat-lbl">Obras</span>
+                </div>
+                <div class="ficha-stat">
+                    <span class="ficha-stat-num" id="fAgrup">--</span>
+                    <span class="ficha-stat-lbl">Agrupaciones</span>
+                </div>
+                <div class="ficha-stat">
+                    <span class="ficha-stat-num" id="fAnios">--</span>
+                    <span class="ficha-stat-lbl">Años activos</span>
+                </div>
+            </div>
+
+            <div class="ficha-meta">
+                <div class="ficha-meta-row">
+                    <span class="ficha-meta-lbl">Periodo</span>
+                    <span class="ficha-meta-val" id="fPeriodo">--</span>
+                </div>
+                <div class="ficha-meta-row">
+                    <span class="ficha-meta-lbl">Modalidades</span>
+                    <span class="ficha-meta-val" id="fModalidades">--</span>
+                </div>
+                <div class="ficha-meta-row">
+                    <span class="ficha-meta-lbl">Longitud media</span>
+                    <span class="ficha-meta-val" id="fLongitud">--</span>
+                </div>
+            </div>
+
+            <!-- Score poético -->
+            <div class="ficha-score" id="fichaScore" style="display:none">
+                <div class="score-poetico-big" id="scoreValor">--</div>
+                <div class="score-poetico-lbl">Score poético medio</div>
+                <div class="score-sub" id="scoreSub"></div>
+            </div>
+        </div>
+
+        <!-- AGRUPACIONES -->
+        <div class="ficha-card" id="cardAgrupaciones">
+            <h3 class="ficha-card-title">Agrupaciones</h3>
+            <div id="listaAgrupaciones"></div>
+        </div>
+    </aside>
+
+    <!-- COLUMNA DERECHA: CONTENIDO -->
+    <main class="perfil-main">
+
+        <!-- ACTIVIDAD TEMPORAL -->
+        <section class="perfil-section">
+            <h2 class="section-title">Actividad por año</h2>
+            <div id="actividadBar" class="chart-bars actividad-bars"></div>
+        </section>
+
+        <!-- ANÁLISIS POÉTICO -->
+        <section class="perfil-section" id="sectionPoetica" style="display:none">
+            <h2 class="section-title">Análisis Poético del Estilo</h2>
+            <div class="poetica-grid">
+                <div class="poetica-mini-card">
+                    <h4>Metros más usados</h4>
+                    <div id="pMetros" class="chart-bars"></div>
+                </div>
+                <div class="poetica-mini-card">
+                    <h4>Tipo de rima</h4>
+                    <div id="pRimas" class="chart-bars"></div>
+                </div>
+                <div class="poetica-mini-card">
+                    <h4>Esquemas frecuentes</h4>
+                    <div id="pEsquemas" class="chart-bars"></div>
+                </div>
+                <div class="poetica-mini-card">
+                    <h4>Figuras retóricas</h4>
+                    <div id="pFiguras" class="chart-bars"></div>
+                </div>
+            </div>
+
+            <!-- Léxico gaditano -->
+            <div id="sectionLexico" style="display:none">
+                <h3 class="section-subtitle">Léxico gaditano y carnavalesco</h3>
+                <div id="pLexico" class="nube-container" style="min-height:100px"></div>
+            </div>
+
+            <!-- Top letras por score -->
+            <div id="sectionTopLetras" style="display:none">
+                <h3 class="section-subtitle">Obras más destacadas poéticamente</h3>
+                <div id="pTopLetras" class="letras-grid"></div>
+            </div>
+        </section>
+
+        <!-- VERSOS ICÓNICOS -->
+        <section class="perfil-section" id="sectionVersos" style="display:none">
+            <h2 class="section-title">Versos destacados</h2>
+            <div id="versosContainer" class="versos-iconicos"></div>
+        </section>
+
+        <!-- TIPOS DE PIEZA -->
+        <section class="perfil-section">
+            <h2 class="section-title">Tipos de pieza</h2>
+            <div id="tiposPiezaContainer" class="tipos-pieza-grid"></div>
+        </section>
+
+        <!-- OBRAS COMPLETAS -->
+        <section class="perfil-section">
+            <h2 class="section-title">Obra completa
+                <span class="section-count" id="obrasCount"></span>
+            </h2>
+            <div class="obras-filtros">
+                <select id="obrasFiltroAnio" onchange="filtrarObras()">
+                    <option value="">Todos los años</option>
+                </select>
+                <select id="obrasFiltroTipo" onchange="filtrarObras()">
+                    <option value="">Todos los tipos</option>
+                </select>
+                <input type="text" id="obrasBuscar" placeholder="Buscar en obras..." oninput="filtrarObras()">
+            </div>
+            <div id="obrasGrid" class="letras-grid"></div>
+        </section>
+
+    </main>
+</div>
+
+<div id="perfilError" style="display:none" class="perfil-error">
+    <p>No se encontró el autor solicitado.</p>
+    <a href="/" class="btn-primary">Volver al archivo</a>
+</div>
+
+<!-- MODAL DETALLE LETRA -->
+<div class="modal-overlay" id="modalOverlay" onclick="cerrarModal()">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <button class="modal-close" onclick="cerrarModal()">&times;</button>
+        <div id="detalle"></div>
+    </div>
+</div>
+
+<!-- MODAL ANÁLISIS POÉTICO -->
+<div class="modal-overlay" id="modalPoetaOverlay" onclick="cerrarModalPoeta()">
+    <div class="modal-content modal-poetico" onclick="event.stopPropagation()">
+        <button class="modal-close" onclick="cerrarModalPoeta()">&times;</button>
+        <div id="detallePoeta"></div>
+    </div>
+</div>
+
+<footer class="main-footer">
+    <p class="footer-links">
+        <a href="/">Archivo</a> &middot;
+        <a href="/admin">Admin</a> &middot;
+        <a href="/api/autores">API Autores</a>
+    </p>
+</footer>
+
+<script>
+// ========================
+// INIT
+// ========================
+
+const nombreAutor = decodeURIComponent(location.pathname.split("/autor/")[1] || "");
+let _obrasData = [];
+
+document.addEventListener("DOMContentLoaded", () => {
+    if (!nombreAutor) { mostrarError(); return; }
+    cargarPerfil();
+    document.addEventListener("keydown", e => {
+        if (e.key === "Escape") { cerrarModal(); cerrarModalPoeta(); }
+    });
+});
+
+function mostrarError() {
+    document.getElementById("perfilError").style.display = "flex";
+}
+
+// ========================
+// CARGA DEL PERFIL
+// ========================
+
+function cargarPerfil() {
+    fetch(`/api/autor/${encodeURIComponent(nombreAutor)}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) { mostrarError(); return; }
+            renderPerfil(data);
+        })
+        .catch(mostrarError);
+}
+
+function renderPerfil(d) {
+    document.title = `${d.autor} — Archivo Carnaval Cádiz`;
+    document.getElementById("pageTitle").textContent = `${d.autor} — Carnaval de Cádiz`;
+    document.getElementById("headerNombre").textContent = d.autor;
+    document.getElementById("headerSubtitle").textContent =
+        `Autor · ${d.total_obras} obras · ${d.periodo}`;
+
+    document.getElementById("fichaNombre").textContent = d.autor;
+    document.getElementById("fichaAvatar").textContent = iniciales(d.autor);
+    document.getElementById("fTotal").textContent = d.total_obras;
+    document.getElementById("fAgrup").textContent = d.total_agrupaciones;
+    document.getElementById("fAnios").textContent = d.anios_activos;
+    document.getElementById("fPeriodo").textContent = d.periodo;
+    document.getElementById("fModalidades").textContent = d.modalidades || "—";
+    document.getElementById("fLongitud").textContent = d.longitud_media
+        ? d.longitud_media.toLocaleString("es-ES") + " chars" : "—";
+
+    // Score poético
+    if (d.score_poetico_medio > 0) {
+        const sc = document.getElementById("fichaScore");
+        sc.style.display = "block";
+        const val = document.getElementById("scoreValor");
+        val.textContent = d.score_poetico_medio;
+        const scoreColor = d.score_poetico_medio >= 70 ? "var(--success)" :
+                           d.score_poetico_medio >= 40 ? "var(--gold)" : "var(--text-muted)";
+        val.style.color = scoreColor;
+        const metro = (d.metros_frecuentes || [])[0];
+        document.getElementById("scoreSub").textContent =
+            metro ? `Metro favorito: ${metro.metro}` : "";
+    }
+
+    // Agrupaciones
+    renderAgrupaciones(d.agrupaciones_detalle || []);
+
+    // Actividad por año
+    renderActividadAnual(d.actividad_anual || []);
+
+    // Tipos de pieza
+    renderTiposPieza(d.tipos_pieza || []);
+
+    // Poética
+    const hayPoetica = (d.metros_frecuentes || []).length > 0 ||
+                       (d.tipos_rima || []).length > 0;
+    if (hayPoetica) {
+        document.getElementById("sectionPoetica").style.display = "block";
+        renderBarChart("pMetros", (d.metros_frecuentes || []).map(x => ({label: x.metro, value: x.cnt})));
+        renderBarChart("pRimas", (d.tipos_rima || []).map(x => ({label: x.tipo, value: x.cnt})));
+        renderBarChart("pEsquemas", (d.esquemas_frecuentes || []).map(x => ({label: x.esquema, value: x.cnt})));
+        renderBarChart("pFiguras", (d.figuras_frecuentes || []).map(x => ({label: x.figura, value: x.cnt})));
+
+        if ((d.lexico_gaditano || []).length > 0) {
+            document.getElementById("sectionLexico").style.display = "block";
+            renderMiniNube("pLexico", d.lexico_gaditano, "cnt");
+        }
+        if ((d.top_letras_poeticas || []).length > 0) {
+            document.getElementById("sectionTopLetras").style.display = "block";
+            renderTopLetras("pTopLetras", d.top_letras_poeticas);
+        }
+    }
+
+    // Versos destacados (de las obras)
+    const versos = [];
+    (d.obras || []).forEach(o => {
+        if (o.versos_destacados) {
+            try {
+                const vv = JSON.parse(o.versos_destacados);
+                if (vv && vv[0]) versos.push({ verso: vv[0], titulo: o.titulo, anio: o.anio });
+            } catch(e) {}
+        }
+    });
+    if (versos.length > 0) {
+        document.getElementById("sectionVersos").style.display = "block";
+        renderVersosIconicos(versos.slice(0, 8));
+    }
+
+    // Obras
+    _obrasData = d.obras || [];
+    poblarFiltrosObras(_obrasData);
+    renderObras(_obrasData);
+
+    document.getElementById("perfilLayout").style.display = "grid";
+}
+
+// ========================
+// COMPONENTES
+// ========================
+
+function iniciales(nombre) {
+    return nombre.trim().split(/\s+/).map(p => p[0]).join("").toUpperCase().slice(0, 2);
+}
+
+function renderAgrupaciones(lista) {
+    const cont = document.getElementById("listaAgrupaciones");
+    if (!lista.length) { cont.innerHTML = '<span class="text-muted">No hay datos</span>'; return; }
+    cont.innerHTML = lista.map(a => `
+        <a class="agrupacion-item" href="/agrupacion/${encodeURIComponent(a.agrupacion)}">
+            <span class="agrupacion-nombre">${escH(a.agrupacion)}</span>
+            <span class="agrupacion-meta">${a.cnt} obras · ${a.desde || '?'} – ${a.hasta || '?'}</span>
+        </a>
+    `).join("");
+}
+
+function renderActividadAnual(lista) {
+    const cont = document.getElementById("actividadBar");
+    if (!lista.length) { cont.innerHTML = '<span class="text-muted">Sin datos</span>'; return; }
+    const max = Math.max(...lista.map(d => d.cnt));
+    cont.innerHTML = lista.map(d => {
+        const pct = (d.cnt / max * 100).toFixed(1);
+        const scoreColor = d.score_medio >= 70 ? "var(--success)" :
+                           d.score_medio >= 40 ? "var(--gold)" : "var(--accent)";
+        return `
+            <div class="bar-row actividad-row">
+                <span class="bar-label">${escH(String(d.anio))}</span>
+                <div class="bar-track">
+                    <div class="bar-fill" style="width:${pct}%;background:${scoreColor}"></div>
+                </div>
+                <span class="bar-value">${d.cnt}</span>
+                ${d.score_medio > 0 ? `<span class="bar-score">♟ ${d.score_medio}</span>` : ""}
+            </div>
+        `;
+    }).join("");
+}
+
+function renderTiposPieza(lista) {
+    const cont = document.getElementById("tiposPiezaContainer");
+    if (!lista.length) { cont.innerHTML = '<span class="text-muted">Sin datos</span>'; return; }
+    const total = lista.reduce((s, x) => s + x.cnt, 0);
+    cont.innerHTML = lista.map(t => {
+        const pct = Math.round(t.cnt / total * 100);
+        return `
+            <div class="tipo-pieza-item">
+                <div class="tipo-pieza-label">${escH(t.tipo)}</div>
+                <div class="tipo-pieza-bar">
+                    <div class="tipo-pieza-fill" style="width:${pct}%"></div>
+                </div>
+                <div class="tipo-pieza-meta">${t.cnt} <span class="text-muted">(${pct}%)</span></div>
+            </div>
+        `;
+    }).join("");
+}
+
+function renderTopLetras(containerId, lista) {
+    const cont = document.getElementById(containerId);
+    cont.innerHTML = lista.map(l => `
+        <div class="letra-card poetica-card" onclick="cargarDetalle(${l.id})">
+            <div class="titulo">${escH(l.titulo)}</div>
+            <div class="meta">
+                ${l.anio ? `<span class="tag anio">${escH(String(l.anio))}</span>` : ""}
+                ${l.modalidad ? `<span class="tag modalidad">${escH(l.modalidad)}</span>` : ""}
+                ${l.nombre_metro ? `<span class="tag">${escH(l.nombre_metro)}</span>` : ""}
+                ${l.tipo_rima ? `<span class="tag">Rima ${escH(l.tipo_rima)}</span>` : ""}
+                ${l.score_poetico ? `<span class="tag score-tag">Score: ${l.score_poetico}/100</span>` : ""}
+            </div>
+        </div>
+    `).join("");
+}
+
+function renderVersosIconicos(versos) {
+    const cont = document.getElementById("versosContainer");
+    cont.innerHTML = versos.map(v => `
+        <blockquote class="verso-iconico">
+            <p>${escH(v.verso)}</p>
+            <footer>— <em>${escH(v.titulo)}</em>${v.anio ? ` (${escH(String(v.anio))})` : ""}</footer>
+        </blockquote>
+    `).join("");
+}
+
+// ========================
+// OBRAS + FILTROS
+// ========================
+
+function poblarFiltrosObras(obras) {
+    const anios = [...new Set(obras.map(o => o.anio).filter(Boolean))].sort().reverse();
+    const tipos = [...new Set(obras.map(o => o.tipo_pieza).filter(Boolean))].sort();
+
+    const selAnio = document.getElementById("obrasFiltroAnio");
+    anios.forEach(a => {
+        const opt = document.createElement("option");
+        opt.value = a; opt.textContent = a;
+        selAnio.appendChild(opt);
+    });
+
+    const selTipo = document.getElementById("obrasFiltroTipo");
+    tipos.forEach(t => {
+        const opt = document.createElement("option");
+        opt.value = t; opt.textContent = t;
+        selTipo.appendChild(opt);
+    });
+
+    document.getElementById("obrasCount").textContent = `(${obras.length})`;
+}
+
+function filtrarObras() {
+    const anio = document.getElementById("obrasFiltroAnio").value;
+    const tipo = document.getElementById("obrasFiltroTipo").value;
+    const q = document.getElementById("obrasBuscar").value.toLowerCase();
+
+    const filtradas = _obrasData.filter(o => {
+        if (anio && o.anio !== anio) return false;
+        if (tipo && o.tipo_pieza !== tipo) return false;
+        if (q && !o.titulo.toLowerCase().includes(q)) return false;
+        return true;
+    });
+    renderObras(filtradas);
+}
+
+function renderObras(obras) {
+    const cont = document.getElementById("obrasGrid");
+    if (!obras.length) {
+        cont.innerHTML = '<div class="empty-state">No hay obras con esos filtros</div>';
+        return;
+    }
+    cont.innerHTML = obras.map(o => {
+        const scoreColor = o.score_poetico >= 70 ? "var(--success)" :
+                           o.score_poetico >= 40 ? "var(--gold)" : "";
+        return `
+        <div class="letra-card" onclick="cargarDetalle(${o.id})">
+            <div class="titulo">${escH(o.titulo)}</div>
+            <div class="meta">
+                ${o.anio ? `<span class="tag anio">${escH(String(o.anio))}</span>` : ""}
+                ${o.modalidad ? `<span class="tag modalidad">${escH(o.modalidad)}</span>` : ""}
+                ${o.tipo_pieza ? `<span class="tag tipo">${escH(o.tipo_pieza)}</span>` : ""}
+                ${o.score_poetico > 0 ? `<span class="tag" style="color:${scoreColor};border-color:${scoreColor}">♟ ${o.score_poetico}</span>` : ""}
+            </div>
+        </div>
+        `;
+    }).join("");
+}
+
+// ========================
+// UTILS COMPARTIDOS
+// ========================
+
+function escH(t) {
+    if (!t) return "";
+    const d = document.createElement("div");
+    d.textContent = t;
+    return d.innerHTML;
+}
+
+function renderBarChart(containerId, data) {
+    const container = document.getElementById(containerId);
+    if (!container || !data || !data.length) return;
+    container.innerHTML = "";
+    const maxVal = Math.max(...data.map(d => d.value));
+    data.forEach(d => {
+        const pct = (d.value / maxVal * 100).toFixed(1);
+        const row = document.createElement("div");
+        row.className = "bar-row";
+        row.innerHTML = `
+            <span class="bar-label">${escH(String(d.label || "N/A"))}</span>
+            <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
+            <span class="bar-value">${d.value}</span>
+        `;
+        container.appendChild(row);
+    });
+}
+
+function renderMiniNube(containerId, items, freqKey) {
+    const cont = document.getElementById(containerId);
+    if (!cont || !items.length) return;
+    cont.innerHTML = "";
+    const maxFreq = Math.max(...items.map(d => d[freqKey]));
+    const minFreq = Math.min(...items.map(d => d[freqKey]));
+    const colores = ["var(--accent)", "var(--gold)", "var(--accent-light)", "var(--success)", "var(--text-secondary)"];
+    [...items].sort(() => Math.random() - 0.5).forEach(item => {
+        const ratio = (item[freqKey] - minFreq) / (maxFreq - minFreq || 1);
+        const fontSize = 0.7 + ratio * 1.3;
+        const colorIdx = Math.floor((1 - ratio) * (colores.length - 1));
+        const palabra = item.palabra || "?";
+        const span = document.createElement("span");
+        span.className = "nube-word";
+        span.textContent = palabra;
+        span.style.fontSize = fontSize + "rem";
+        span.style.color = colores[colorIdx];
+        span.title = `${palabra}: ${item[freqKey]}`;
+        cont.appendChild(span);
+    });
+}
+
+// ========================
+// MODAL DETALLE
+// ========================
+
+function cargarDetalle(id) {
+    fetch("/api/letra/" + id)
+        .then(r => r.json())
+        .then(data => {
+            const detalle = document.getElementById("detalle");
+            let metaHTML = "";
+            if (data.anio) metaHTML += `<span class="tag anio">${escH(String(data.anio))}</span>`;
+            if (data.modalidad) metaHTML += `<span class="tag modalidad">${escH(data.modalidad)}</span>`;
+            if (data.tipo_pieza) metaHTML += `<span class="tag tipo">${escH(data.tipo_pieza)}</span>`;
+            if (data.agrupacion) metaHTML += `<span class="tag">${escH(data.agrupacion)}</span>`;
+
+            let scoreHTML = "";
+            if (data.score_poetico > 0) {
+                const sc = data.score_poetico;
+                const scColor = sc >= 70 ? "var(--success)" : sc >= 40 ? "var(--gold)" : "var(--text-muted)";
+                scoreHTML = `<div class="detalle-poetica-tags">
+                    <span class="tag" style="color:${scColor};border-color:${scColor}">Score poético: ${sc}/100</span>
+                    ${data.nombre_metro ? `<span class="tag">${escH(data.nombre_metro)}</span>` : ""}
+                    ${data.tipo_rima ? `<span class="tag">Rima ${escH(data.tipo_rima)}</span>` : ""}
+                </div>`;
+            }
+
+            let fuenteHTML = data.url
+                ? `<div class="detalle-fuente">Fuente: <a href="${escH(data.url)}" target="_blank" rel="noopener">${escH(data.fuente || "Original")}</a></div>`
+                : "";
+
+            let versosHTML = "";
+            if (data.versos_destacados) {
+                try {
+                    const vv = JSON.parse(data.versos_destacados);
+                    if (vv && vv.length) {
+                        versosHTML = `<div class="detalle-versos-destacados">
+                            <span class="versos-label">Versos destacados:</span>
+                            ${vv.map(v => `<blockquote class="verso-destacado">${escH(v)}</blockquote>`).join("")}
+                        </div>`;
+                    }
+                } catch(e) {}
+            }
+
+            detalle.innerHTML = `
+                <h2>${escH(data.titulo)}</h2>
+                <div class="detalle-meta">${metaHTML}</div>
+                ${scoreHTML}
+                ${versosHTML}
+                <div class="detalle-texto">${escH(data.contenido || "Sin contenido")}</div>
+                ${fuenteHTML}
+                <div class="detalle-acciones">
+                    <button class="btn-poetico" onclick="abrirAnalisisPoeta(${data.id})">&#9997; Análisis poético</button>
+                </div>
+            `;
+            document.getElementById("modalOverlay").classList.add("open");
+        });
+}
+
+function cerrarModal() {
+    document.getElementById("modalOverlay").classList.remove("open");
+}
+
+// ========================
+// MODAL ANÁLISIS POÉTICO
+// ========================
+
+function abrirAnalisisPoeta(id) {
+    const overlay = document.getElementById("modalPoetaOverlay");
+    const detalle = document.getElementById("detallePoeta");
+    detalle.innerHTML = '<div class="loading">Analizando métricamente la letra...</div>';
+    overlay.classList.add("open");
+
+    fetch(`/api/analisis_poetico/${id}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                detalle.innerHTML = `<div class="empty-state">${escH(data.error)}</div>`;
+                return;
+            }
+            renderAnalisisPoeta(detalle, data);
+        })
+        .catch(() => {
+            detalle.innerHTML = '<div class="empty-state">Error al analizar</div>';
+        });
+}
+
+function cerrarModalPoeta() {
+    document.getElementById("modalPoetaOverlay").classList.remove("open");
+}
+
+function renderAnalisisPoeta(cont, d) {
+    const metrica = d.metrica || {};
+    const rima = d.rima || {};
+    const vocab = d.vocabulario || {};
+    const figuras = d.figuras_retoricas || [];
+    const versos = d.versos_destacados || [];
+    const score = d.score_poetico || 0;
+    const scoreColor = score >= 70 ? "var(--success)" : score >= 40 ? "var(--gold)" : "var(--text-muted)";
+
+    let figurasHTML = figuras.length > 0 ? figuras.map(f => {
+        let ejH = "";
+        if (f.ejemplos && f.ejemplos.length) {
+            ejH = f.ejemplos.map(e => e.versos
+                ? `<blockquote class="figura-ejemplo">${escH(e.versos.join(" / "))}</blockquote>`
+                : "").join("");
+        }
+        const cH = f.count !== undefined ? ` <span class="figura-count">(${f.count})</span>` : "";
+        const pH = f.palabras ? ` — <em>${f.palabras.map(p => escH(p.palabra)).join(", ")}</em>` : "";
+        return `<div class="figura-item"><strong>${escH(f.figura)}</strong>${cH}${pH}${ejH}</div>`;
+    }).join("") : '<span class="text-muted">No detectadas</span>';
+
+    const versosH = versos.length
+        ? versos.map(v => `<blockquote class="verso-destacado">${escH(v)}</blockquote>`).join("")
+        : '<span class="text-muted">No disponibles</span>';
+
+    const distrib = metrica.distribucion || {};
+    const distribH = Object.entries(distrib).length
+        ? Object.entries(distrib).map(([m, c]) => `<span class="tag">${escH(m)}: ${c}</span>`).join(" ")
+        : '<span class="text-muted">No analizado</span>';
+
+    const estrofas = rima.estrofas || [];
+    const estrofasH = estrofas.slice(0, 6).map(e => `
+        <div class="estrofa-row">
+            <span class="estrofa-esquema">${escH(e.esquema || "—")}</span>
+            <span class="estrofa-info">${e.n_versos} versos · rima ${escH(e.tipo_rima || "?")}${e.forma_estrofica ? " · " + escH(e.forma_estrofica) : ""}</span>
+        </div>`).join("") || '<span class="text-muted">No analizado</span>';
+
+    const pkH = (vocab.palabras_clave || []).slice(0, 12).map(p =>
+        `<span class="tag">${escH(p.palabra)}</span>`).join(" ");
+
+    cont.innerHTML = `
+        <div class="analisis-poetico">
+            <div class="analisis-header">
+                <h2>Análisis Poético</h2>
+                <div class="score-circle" style="border-color:${scoreColor};color:${scoreColor}">
+                    <span class="score-num">${score}</span>
+                    <span class="score-label">/ 100</span>
+                </div>
+            </div>
+            <div class="analisis-grid">
+                <div class="analisis-card">
+                    <h4>Métrica</h4>
+                    <div class="analisis-row"><span>Metro dominante</span><strong>${escH(metrica.nombre_metro || "libre")}</strong></div>
+                    <div class="analisis-row"><span>Sílabas</span><strong>${metrica.metro_dominante || "—"}</strong></div>
+                    <div class="analisis-row"><span>Coherencia</span><strong>${metrica.coherencia_pct || 0}%</strong></div>
+                    <div class="analisis-row"><span>Distribución</span><div>${distribH}</div></div>
+                    <div class="analisis-row"><span>Estrofas</span><strong>${d.n_estrofas}</strong></div>
+                    <div class="analisis-row"><span>Versos</span><strong>${d.n_versos}</strong></div>
+                </div>
+                <div class="analisis-card">
+                    <h4>Rima</h4>
+                    <div class="analisis-row"><span>Tipo</span><strong>${escH(rima.tipo_rima || "libre")}</strong></div>
+                    <div class="analisis-row"><span>Esquema</span><strong class="esquema-badge">${escH(rima.esquema_predominante || "—")}</strong></div>
+                    <h5 style="margin-top:1rem;margin-bottom:.5rem">Por estrofa:</h5>
+                    <div class="estrofas-lista">${estrofasH}</div>
+                </div>
+                <div class="analisis-card">
+                    <h4>Vocabulario</h4>
+                    <div class="analisis-row"><span>Total palabras</span><strong>${vocab.total_palabras || 0}</strong></div>
+                    <div class="analisis-row"><span>Único</span><strong>${vocab.vocabulario_unico || 0}</strong></div>
+                    <div class="analisis-row"><span>Densidad léxica</span><strong>${vocab.densidad_lexica || 0}%</strong></div>
+                    <div class="analisis-row palabras-clave-row"><span>Palabras clave</span><div>${pkH || "—"}</div></div>
+                </div>
+                <div class="analisis-card">
+                    <h4>Figuras Retóricas</h4>
+                    ${figurasHTML}
+                </div>
+            </div>
+            <div class="analisis-card analisis-full"><h4>Versos Destacados</h4>${versosH}</div>
+        </div>`;
+}
+</script>
+</body>
+</html>

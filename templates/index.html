@@ -48,6 +48,7 @@
     <button class="tab" data-tab="cronologia" onclick="switchTab('cronologia')">Cronolog&iacute;a</button>
     <button class="tab" data-tab="comparar" onclick="switchTab('comparar')">Comparar</button>
     <button class="tab" data-tab="estadisticas" onclick="switchTab('estadisticas')">Estad&iacute;sticas</button>
+    <button class="tab" data-tab="poetica" onclick="switchTab('poetica')">Po&eacute;tica</button>
 </nav>
 
 <!-- TAB: BUSCAR -->
@@ -182,11 +183,101 @@
     </div>
 </section>
 
+<!-- TAB: POÉTICA -->
+<section class="tab-content" id="tab-poetica">
+    <div class="poetica-header">
+        <h3>An&aacute;lisis Po&eacute;tico del Carnaval</h3>
+        <p class="text-muted">M&eacute;trica, rima, figuras ret&oacute;ricas y vocabulario gaditano del corpus carnavalesco</p>
+    </div>
+
+    <!-- FILTROS DEL CORPUS -->
+    <div class="poetica-filtros filtros-bar">
+        <select id="poeticaModalidad">
+            <option value="">Todas las modalidades</option>
+            <option value="Comparsa">Comparsa</option>
+            <option value="Chirigota">Chirigota</option>
+            <option value="Coro">Coro</option>
+            <option value="Cuarteto">Cuarteto</option>
+        </select>
+        <select id="poeticaAnio">
+            <option value="">Todos los a&ntilde;os</option>
+        </select>
+        <select id="poeticaTipo">
+            <option value="">Todos los tipos</option>
+            <option value="Pasodoble">Pasodoble</option>
+            <option value="Cupl&eacute;">Cupl&eacute;</option>
+            <option value="Tango">Tango</option>
+            <option value="Popurr&iacute;">Popurr&iacute;</option>
+            <option value="Presentaci&oacute;n">Presentaci&oacute;n</option>
+        </select>
+        <button onclick="cargarPoética()" class="btn-primary">Analizar corpus</button>
+        <span class="poetica-aviso" id="poeticaAviso"></span>
+    </div>
+
+    <div id="poeticaLoader" class="loader-text" style="display:none">Analizando... puede tardar unos segundos.</div>
+
+    <!-- DASHBOARD POÉTICO -->
+    <div id="poeticaDashboard" style="display:none">
+
+        <!-- MÉTRICAS RÁPIDAS -->
+        <div class="poetica-kpis" id="poeticaKpis"></div>
+
+        <!-- GRID DE CHARTS -->
+        <div class="charts-grid" id="poeticaCharts">
+            <div class="chart-card">
+                <h3>Metros dom&iacute;nantes</h3>
+                <p class="text-muted-sm">Tipo de verso m&aacute;s usado en cada letra</p>
+                <div id="chartMetros" class="chart-bars"></div>
+            </div>
+            <div class="chart-card">
+                <h3>Tipo de rima</h3>
+                <p class="text-muted-sm">Consonante, asonante o libre</p>
+                <div id="chartRima" class="chart-bars"></div>
+            </div>
+            <div class="chart-card">
+                <h3>Esquemas m&aacute;s frecuentes</h3>
+                <p class="text-muted-sm">Patrones de rima (ABAB, ABBA...)</p>
+                <div id="chartEsquemas" class="chart-bars"></div>
+            </div>
+            <div class="chart-card">
+                <h3>Figuras ret&oacute;ricas</h3>
+                <p class="text-muted-sm">An&aacute;fora, ep&iacute;fora, enumeraci&oacute;n...</p>
+                <div id="chartFiguras" class="chart-bars"></div>
+            </div>
+            <div class="chart-card">
+                <h3>L&eacute;xico gaditano</h3>
+                <p class="text-muted-sm">Palabras del habla y cultura de C&aacute;diz</p>
+                <div id="chartLexico" class="nube-container" style="max-height:220px;overflow:hidden"></div>
+            </div>
+            <div class="chart-card">
+                <h3>Palabras clave del corpus</h3>
+                <p class="text-muted-sm">T&eacute;rminos m&aacute;s significativos</p>
+                <div id="chartPalabrasClave" class="nube-container" style="max-height:220px;overflow:hidden"></div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ANÁLISIS INDIVIDUAL (desde modal) -->
+    <div class="poetica-individual-section">
+        <h4>Analizar una letra concreta</h4>
+        <p class="text-muted">Busca una letra y haz clic en <strong>Ver an&aacute;lisis po&eacute;tico</strong> desde el detalle de la letra.</p>
+    </div>
+</section>
+
 <!-- MODAL DETALLE -->
 <div class="modal-overlay" id="modalOverlay" onclick="cerrarModal()">
     <div class="modal-content" onclick="event.stopPropagation()">
         <button class="modal-close" onclick="cerrarModal()">&times;</button>
         <div id="detalle"></div>
+    </div>
+</div>
+
+<!-- MODAL ANÁLISIS POÉTICO -->
+<div class="modal-overlay" id="modalPoetaOverlay" onclick="cerrarModalPoeta()">
+    <div class="modal-content modal-poetico" onclick="event.stopPropagation()">
+        <button class="modal-close" onclick="cerrarModalPoeta()">&times;</button>
+        <div id="detallePoeta"></div>
     </div>
 </div>
 

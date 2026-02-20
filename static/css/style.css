@@ -856,3 +856,391 @@ body {
     .stat-number { font-size: 1.1rem; }
     .stat-label { font-size: 0.65rem; }
 }
+
+/* ==============================
+   TAB POÉTICA
+   ============================== */
+
+.poetica-header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.poetica-header h3 {
+    font-size: 1.2rem;
+    margin-bottom: 0.3rem;
+    color: var(--gold);
+}
+
+.poetica-filtros {
+    margin-bottom: 1rem;
+}
+
+.poetica-aviso {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+}
+
+.loader-text {
+    text-align: center;
+    padding: 2rem;
+    color: var(--gold);
+    font-style: italic;
+}
+
+.text-muted-sm {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+/* KPI Cards */
+.poetica-kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0.8rem;
+    margin-bottom: 1.5rem;
+}
+
+.kpi-card {
+    background: var(--bg-card);
+    border: 1px solid var(--gold);
+    border-radius: var(--radius);
+    padding: 1rem;
+    text-align: center;
+}
+
+.kpi-num {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: var(--gold);
+    line-height: 1.1;
+}
+
+.kpi-label {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 0.2rem;
+}
+
+/* Top letras poéticas */
+.poetica-top-letras {
+    margin-top: 2rem;
+}
+
+.poetica-top-letras h4 {
+    font-size: 1rem;
+    margin-bottom: 0.8rem;
+    color: var(--gold);
+}
+
+.poetica-card {
+    border-color: rgba(240,192,64,0.2) !important;
+}
+
+.poetica-card:hover {
+    border-color: var(--gold) !important;
+}
+
+.score-tag {
+    color: var(--gold) !important;
+    border-color: var(--gold) !important;
+}
+
+/* Sección de análisis individual */
+.poetica-individual-section {
+    margin-top: 2rem;
+    background: var(--bg-card);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 1.2rem;
+    text-align: center;
+}
+
+.poetica-individual-section h4 {
+    font-size: 1rem;
+    margin-bottom: 0.4rem;
+    color: var(--text-secondary);
+}
+
+/* Links a perfiles en modal */
+.detalle-perfil-links {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.8rem;
+}
+
+.perfil-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.3rem 0.8rem;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    color: var(--gold);
+    text-decoration: none;
+    font-size: 0.78rem;
+    transition: all 0.2s;
+}
+
+.perfil-link:hover {
+    background: var(--gold);
+    color: #000;
+    border-color: var(--gold);
+    font-weight: 600;
+}
+
+/* Botón análisis poético en modal */
+.detalle-acciones {
+    margin-top: 1.2rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: flex-end;
+}
+
+.btn-poetico {
+    padding: 0.5rem 1.2rem;
+    background: transparent;
+    border: 1px solid var(--gold);
+    border-radius: var(--radius);
+    color: var(--gold);
+    cursor: pointer;
+    font-size: 0.88rem;
+    transition: all 0.2s;
+}
+
+.btn-poetico:hover {
+    background: var(--gold);
+    color: #000;
+    font-weight: 700;
+}
+
+.detalle-poetica-tags {
+    margin-bottom: 0.8rem;
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+}
+
+/* Versos destacados en modal */
+.detalle-versos-destacados {
+    margin: 0.8rem 0;
+    padding: 0.8rem 1rem;
+    background: var(--bg-primary);
+    border-radius: var(--radius);
+    border-left: 3px solid var(--gold);
+}
+
+.versos-label {
+    font-size: 0.75rem;
+    color: var(--gold);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.verso-destacado {
+    font-family: 'Georgia', serif;
+    font-style: italic;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin: 0.3rem 0;
+    padding-left: 0.5rem;
+}
+
+/* ==============================
+   MODAL ANÁLISIS POÉTICO
+   ============================== */
+
+.modal-poetico {
+    max-width: 900px;
+    max-height: 92vh;
+    overflow-y: auto;
+}
+
+.analisis-poetico {
+    padding: 0.5rem 0;
+}
+
+.analisis-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.analisis-header h2 {
+    font-size: 1.3rem;
+    color: var(--gold);
+}
+
+.score-circle {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    border: 3px solid var(--gold);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.score-num {
+    font-size: 1.5rem;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.score-label {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+}
+
+.analisis-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.analisis-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.2rem;
+}
+
+.analisis-full {
+    grid-column: 1 / -1;
+}
+
+.analisis-card h4 {
+    font-size: 0.95rem;
+    color: var(--gold);
+    margin-bottom: 0.8rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--border);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.analisis-card h5 {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.analisis-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.35rem 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    font-size: 0.85rem;
+}
+
+.analisis-row span:first-child {
+    color: var(--text-secondary);
+    flex-shrink: 0;
+    min-width: 130px;
+}
+
+.analisis-row strong {
+    color: var(--text-primary);
+    text-align: right;
+}
+
+.analisis-row em {
+    font-size: 0.78rem;
+}
+
+.palabras-clave-row {
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.palabras-clave-row span:first-child {
+    margin-bottom: 0.3rem;
+}
+
+.esquema-badge {
+    font-family: monospace;
+    font-size: 1rem;
+    color: var(--accent-light);
+    letter-spacing: 0.15em;
+}
+
+/* Estrofas lista */
+.estrofas-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.estrofa-row {
+    display: flex;
+    gap: 0.6rem;
+    align-items: center;
+    font-size: 0.82rem;
+    background: var(--bg-primary);
+    padding: 0.3rem 0.6rem;
+    border-radius: 4px;
+}
+
+.estrofa-esquema {
+    font-family: monospace;
+    font-weight: 700;
+    color: var(--accent-light);
+    min-width: 60px;
+    letter-spacing: 0.1em;
+}
+
+.estrofa-info {
+    color: var(--text-muted);
+    font-size: 0.78rem;
+}
+
+/* Figuras */
+.figura-item {
+    margin-bottom: 0.7rem;
+    font-size: 0.85rem;
+}
+
+.figura-item strong {
+    color: var(--accent-light);
+}
+
+.figura-count {
+    color: var(--text-muted);
+    font-size: 0.78rem;
+}
+
+.figura-ejemplo {
+    font-family: 'Georgia', serif;
+    font-style: italic;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    border-left: 2px solid var(--border);
+    padding-left: 0.6rem;
+    margin: 0.4rem 0 0.4rem 0.5rem;
+}
+
+/* Tag autor */
+.tag.autor {
+    color: var(--accent-light);
+    border-color: var(--accent-light);
+}
+
+@media (max-width: 768px) {
+    .analisis-grid { grid-template-columns: 1fr; }
+    .poetica-kpis { grid-template-columns: repeat(2, 1fr); }
+    .analisis-header { flex-direction: column; gap: 1rem; align-items: flex-start; }
+}

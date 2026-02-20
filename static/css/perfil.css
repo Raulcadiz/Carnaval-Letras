@@ -1,0 +1,444 @@
+/* ==============================
+   PERFIL DE AUTOR / AGRUPACIÓN
+   ============================== */
+
+/* Header especial */
+.perfil-header {
+    background: linear-gradient(135deg, #0d0d1a 0%, var(--bg-card) 60%, #1a1028 100%);
+    border-bottom: 2px solid var(--gold);
+    padding: 1.5rem 1rem;
+    position: relative;
+}
+
+.perfil-header::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+}
+
+.header-back {
+    display: inline-block;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.82rem;
+    margin-bottom: 0.5rem;
+    transition: color 0.2s;
+}
+
+.header-back:hover { color: var(--gold); }
+
+/* Layout principal */
+.perfil-layout {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 1.5rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1.5rem 1rem;
+}
+
+/* Sidebar */
+.perfil-aside {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+/* Ficha card */
+.ficha-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+}
+
+.ficha-card-title {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    margin-bottom: 0.8rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--border);
+}
+
+/* Avatar */
+.ficha-avatar {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    font-weight: 800;
+    margin: 0 auto 1rem;
+    letter-spacing: -1px;
+}
+
+.autor-avatar {
+    background: linear-gradient(135deg, var(--accent-dark), var(--accent));
+    color: white;
+}
+
+.agrupacion-avatar {
+    background: linear-gradient(135deg, #2a1a00, var(--gold));
+    color: #000;
+}
+
+.ficha-nombre {
+    text-align: center;
+    font-size: 1.1rem;
+    margin-bottom: 0.3rem;
+    color: var(--text-primary);
+}
+
+.ficha-tipo {
+    text-align: center;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 1rem;
+}
+
+/* Stats */
+.ficha-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+    margin-bottom: 1.2rem;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    padding: 0.8rem 0;
+}
+
+.ficha-stat {
+    text-align: center;
+}
+
+.ficha-stat-num {
+    display: block;
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: var(--gold);
+    line-height: 1;
+}
+
+.ficha-stat-lbl {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+/* Meta datos */
+.ficha-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.ficha-meta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.5rem;
+    font-size: 0.82rem;
+    padding: 0.25rem 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+.ficha-meta-lbl {
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.ficha-meta-val {
+    color: var(--text-secondary);
+    text-align: right;
+    font-size: 0.8rem;
+}
+
+/* Score poético */
+.ficha-score {
+    text-align: center;
+    margin-top: 1.2rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+}
+
+.score-poetico-big {
+    font-size: 2.5rem;
+    font-weight: 900;
+    line-height: 1;
+    color: var(--gold);
+}
+
+.score-poetico-lbl {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 0.2rem 0;
+}
+
+.score-sub {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+/* Agrupaciones/Autores en sidebar */
+.agrupacion-item {
+    display: flex;
+    flex-direction: column;
+    padding: 0.5rem 0.6rem;
+    border-radius: 6px;
+    text-decoration: none;
+    transition: background 0.15s;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+.agrupacion-item:last-child { border-bottom: none; }
+.agrupacion-item:hover { background: var(--bg-hover); }
+
+.agrupacion-nombre {
+    font-size: 0.88rem;
+    color: var(--accent-light);
+    font-weight: 600;
+}
+
+.agrupacion-meta {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin-top: 0.1rem;
+}
+
+/* ========================
+   MAIN CONTENT
+   ======================== */
+
+.perfil-main {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.perfil-section {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+}
+
+.section-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.section-count {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    font-weight: 400;
+}
+
+.section-subtitle {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin: 1.2rem 0 0.6rem;
+}
+
+/* Actividad anual */
+.actividad-bars .bar-row {
+    margin-bottom: 0.25rem;
+}
+
+.actividad-row .bar-label {
+    min-width: 50px;
+    font-weight: 600;
+}
+
+.bar-score {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    min-width: 60px;
+    text-align: right;
+}
+
+/* Poética grid */
+.poetica-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.poetica-mini-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem;
+}
+
+.poetica-mini-card h4 {
+    font-size: 0.82rem;
+    color: var(--gold);
+    margin-bottom: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Tipos de pieza */
+.tipos-pieza-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.tipo-pieza-item {
+    display: grid;
+    grid-template-columns: 110px 1fr 70px;
+    align-items: center;
+    gap: 0.7rem;
+}
+
+.tipo-pieza-label {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.tipo-pieza-bar {
+    background: var(--bg-hover);
+    border-radius: 4px;
+    height: 10px;
+    overflow: hidden;
+}
+
+.tipo-pieza-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent-light));
+    border-radius: 4px;
+    transition: width 0.5s ease;
+}
+
+.tipo-pieza-meta {
+    font-size: 0.82rem;
+    color: var(--text-primary);
+    font-weight: 600;
+    text-align: right;
+}
+
+/* Filtros de obras */
+.obras-filtros {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+
+.obras-filtros select,
+.obras-filtros input {
+    padding: 0.45rem 0.7rem;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-size: 0.82rem;
+}
+
+.obras-filtros select:focus,
+.obras-filtros input:focus {
+    outline: none;
+    border-color: var(--gold);
+}
+
+/* Versos icónicos */
+.versos-hero {
+    border-color: var(--gold);
+    background: linear-gradient(135deg, var(--bg-card), #1a1300);
+}
+
+.versos-iconicos {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+}
+
+.verso-iconico {
+    background: var(--bg-secondary);
+    border-radius: var(--radius);
+    padding: 1rem 1.2rem;
+    border-left: 3px solid var(--gold);
+    position: relative;
+}
+
+.verso-iconico::before {
+    content: '"';
+    position: absolute;
+    top: -0.3rem;
+    left: 0.8rem;
+    font-size: 2.5rem;
+    color: var(--gold);
+    opacity: 0.3;
+    font-family: Georgia, serif;
+    line-height: 1;
+}
+
+.verso-iconico p {
+    font-family: 'Georgia', serif;
+    font-style: italic;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+    line-height: 1.6;
+    margin-bottom: 0.5rem;
+}
+
+.verso-iconico footer {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-align: right;
+}
+
+/* Error state */
+.perfil-error {
+    min-height: 60vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    text-align: center;
+    color: var(--text-muted);
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+    .perfil-layout {
+        grid-template-columns: 1fr;
+    }
+    .perfil-aside {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+    .ficha-card:first-child {
+        flex: 1;
+        min-width: 260px;
+    }
+}
+
+@media (max-width: 600px) {
+    .poetica-grid { grid-template-columns: 1fr; }
+    .versos-iconicos { grid-template-columns: 1fr; }
+    .tipo-pieza-item { grid-template-columns: 80px 1fr 50px; }
+}

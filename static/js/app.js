@@ -42,6 +42,7 @@ function switchTab(tab) {
     if (tab === "explorar") cargarLetras();
     if (tab === "descubrir") cargarNubePalabras();
     if (tab === "cronologia") cargarTimeline();
+    if (tab === "poetica") iniciarTabPoetica();
 }
 
 // ==============================
@@ -292,17 +293,60 @@ function cargarDetalle(id) {
             if (data.modalidad) metaHTML += `<span class="tag modalidad">${escapeHtml(data.modalidad)}</span>`;
             if (data.tipo_pieza) metaHTML += `<span class="tag tipo">${escapeHtml(data.tipo_pieza)}</span>`;
             if (data.agrupacion) metaHTML += `<span class="tag">${escapeHtml(data.agrupacion)}</span>`;
+            if (data.autor) metaHTML += `<span class="tag autor">Autor: ${escapeHtml(data.autor)}</span>`;
+
+            // Score poético si está disponible
+            let scoreHTML = "";
+            if (data.score_poetico > 0) {
+                const scoreColor = data.score_poetico >= 70 ? "var(--success)" : data.score_poetico >= 40 ? "var(--gold)" : "var(--text-muted)";
+                scoreHTML = `<span class="tag" style="color:${scoreColor};border-color:${scoreColor}">Score poético: ${data.score_poetico}/100</span>`;
+                if (data.nombre_metro) scoreHTML += `<span class="tag">${escapeHtml(data.nombre_metro)}</span>`;
+                if (data.tipo_rima) scoreHTML += `<span class="tag">Rima ${escapeHtml(data.tipo_rima)}</span>`;
+            }
 
             let fuenteHTML = "";
             if (data.url) {
                 fuenteHTML = `<div class="detalle-fuente">Fuente: <a href="${escapeHtml(data.url)}" target="_blank" rel="noopener">${escapeHtml(data.fuente || "Original")}</a></div>`;
             }
 
+            // Versos destacados si están guardados
+            let versosHTML = "";
+            if (data.versos_destacados) {
+                try {
+                    const versos = JSON.parse(data.versos_destacados);
+                    if (versos && versos.length > 0) {
+                        versosHTML = `
+                            <div class="detalle-versos-destacados">
+                                <span class="versos-label">Versos destacados:</span>
+                                ${versos.map(v => `<blockquote class="verso-destacado">${escapeHtml(v)}</blockquote>`).join("")}
+                            </div>
+                        `;
+                    }
+                } catch(e) {}
+            }
+
+            // Links a perfiles de autor y agrupación
+            let perfilLinks = "";
+            if (data.autor) {
+                perfilLinks += `<a href="/autor/${encodeURIComponent(data.autor)}" class="perfil-link" target="_blank">👤 ${escapeHtml(data.autor)}</a>`;
+            }
+            if (data.agrupacion) {
+                perfilLinks += `<a href="/agrupacion/${encodeURIComponent(data.agrupacion)}" class="perfil-link" target="_blank">🎭 ${escapeHtml(data.agrupacion)}</a>`;
+            }
+
             detalle.innerHTML = `
                 <h2>${escapeHtml(data.titulo)}</h2>
                 <div class="detalle-meta">${metaHTML}</div>
+                ${scoreHTML ? `<div class="detalle-poetica-tags">${scoreHTML}</div>` : ""}
+                ${perfilLinks ? `<div class="detalle-perfil-links">${perfilLinks}</div>` : ""}
+                ${versosHTML}
                 <div class="detalle-texto">${escapeHtml(data.contenido || "Sin contenido disponible")}</div>
                 ${fuenteHTML}
+                <div class="detalle-acciones">
+                    <button class="btn-poetico" onclick="abrirAnalisisPoeta(${data.id})">
+                        &#9997; Análisis poético
+                    </button>
+                </div>
             `;
 
             document.getElementById("modalOverlay").classList.add("open");
@@ -646,3 +690,383 @@ function explorarAnio(anio) {
     currentPage = 1;
     cargarLetras();
 }
+
+// También rellenar filtro de año en poética
+document.addEventListener("DOMContentLoaded", () => {
+    fetch("/api/filtros")
+        .then(r => r.json())
+        .then(data => {
+            const selAnioP = document.getElementById("poeticaAnio");
+            if (selAnioP) {
+                data.anios.forEach(a => {
+                    const opt = document.createElement("option");
+                    opt.value = a;
+                    opt.textContent = a;
+                    selAnioP.appendChild(opt);
+                });
+            }
+        });
+});
+
+// ==============================
+// TAB POÉTICA - CORPUS
+// ==============================
+
+let _poeticaCargada = false;
+
+function iniciarTabPoetica() {
+    // Cargar estadísticas del corpus analizado previamente (si las hay)
+    if (_poeticaCargada) return;
+    cargarEstadisticasPoéticas();
+}
+
+function cargarEstadisticasPoéticas() {
+    const dash = document.getElementById("poeticaDashboard");
+    const loader = document.getElementById("poeticaLoader");
+    const aviso = document.getElementById("poeticaAviso");
+
+    fetch("/api/estadisticas_poeticas")
+        .then(r => r.json())
+        .then(data => {
+            if (data.total_analizadas === 0) {
+                if (aviso) aviso.textContent = "No hay letras analizadas aún. Haz clic en 'Analizar corpus' o ve al Admin para analizar el archivo completo.";
+                return;
+            }
+            renderDashboardPoético(data);
+        })
+        .catch(() => {
+            if (aviso) aviso.textContent = "Error al cargar estadísticas poéticas.";
+        });
+}
+
+function cargarPoética() {
+    const modalidad = document.getElementById("poeticaModalidad").value;
+    const anio = document.getElementById("poeticaAnio").value;
+    const tipo = document.getElementById("poeticaTipo").value;
+    const loader = document.getElementById("poeticaLoader");
+    const dash = document.getElementById("poeticaDashboard");
+    const aviso = document.getElementById("poeticaAviso");
+
+    if (loader) loader.style.display = "block";
+    if (dash) dash.style.display = "none";
+    if (aviso) aviso.textContent = "";
+
+    const body = {};
+    if (modalidad) body.modalidad = modalidad;
+    if (anio) body.anio = anio;
+    if (tipo) body.tipo_pieza = tipo;
+    body.limit = 300;
+
+    fetch("/api/analizar_corpus", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(body)
+    })
+        .then(r => r.json())
+        .then(data => {
+            if (loader) loader.style.display = "none";
+            if (data.error) {
+                if (aviso) aviso.textContent = data.error;
+                return;
+            }
+            renderDashboardPoéticoCorpus(data);
+        })
+        .catch(() => {
+            if (loader) loader.style.display = "none";
+            if (aviso) aviso.textContent = "Error al analizar corpus.";
+        });
+}
+
+function renderDashboardPoético(data) {
+    // Transforma stats guardadas al mismo formato que renderDashboardPoéticoCorpus
+    const corpus = {
+        total_analizadas: data.total_analizadas,
+        score_medio: data.score_medio,
+        densidad_lexica_media: data.densidad_lexica_media,
+        metros_dominantes: data.metros_dominantes,
+        tipos_rima: data.tipos_rima,
+        esquemas_frecuentes: data.esquemas_frecuentes,
+        figuras_frecuentes: data.figuras_frecuentes,
+        lexico_gaditano_top: data.lexico_gaditano_top || [],
+        palabras_clave_corpus: data.palabras_clave_corpus || [],
+        muestra: data.total_analizadas,
+        desde_stats: true,
+        top_letras: data.top_letras_poeticas || [],
+    };
+    renderDashboardPoéticoCorpus(corpus);
+}
+
+function renderDashboardPoéticoCorpus(data) {
+    const dash = document.getElementById("poeticaDashboard");
+    if (!dash) return;
+    dash.style.display = "block";
+    _poeticaCargada = true;
+
+    // KPIs
+    const kpis = document.getElementById("poeticaKpis");
+    if (kpis) {
+        kpis.innerHTML = `
+            <div class="kpi-card">
+                <div class="kpi-num">${(data.total_analizadas || data.muestra || 0).toLocaleString("es-ES")}</div>
+                <div class="kpi-label">Letras analizadas</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-num">${data.score_medio || 0}</div>
+                <div class="kpi-label">Score poético medio</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-num">${data.densidad_lexica_media || 0}%</div>
+                <div class="kpi-label">Densidad léxica media</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-num">${(data.metros_dominantes || [])[0]?.metro || "—"}</div>
+                <div class="kpi-label">Metro más usado</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-num">${(data.tipos_rima || [])[0]?.tipo || "—"}</div>
+                <div class="kpi-label">Tipo de rima dominante</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-num">${(data.figuras_frecuentes || [])[0]?.figura?.split(" ")[0] || "—"}</div>
+                <div class="kpi-label">Figura retórica más frecuente</div>
+            </div>
+        `;
+    }
+
+    // Charts
+    renderBarChart("chartMetros",
+        (data.metros_dominantes || []).map(d => ({label: d.metro, value: d.count}))
+    );
+    renderBarChart("chartRima",
+        (data.tipos_rima || []).map(d => ({label: d.tipo, value: d.count}))
+    );
+    renderBarChart("chartEsquemas",
+        (data.esquemas_frecuentes || []).map(d => ({label: d.esquema, value: d.count}))
+    );
+    renderBarChart("chartFiguras",
+        (data.figuras_frecuentes || []).map(d => ({label: d.figura, value: d.count}))
+    );
+
+    // Léxico gaditano como nube
+    renderMiniNube("chartLexico", data.lexico_gaditano_top || [], "apariciones");
+    renderMiniNube("chartPalabrasClave", data.palabras_clave_corpus || [], "frecuencia");
+
+    // Top letras poéticas (si hay)
+    if (data.top_letras && data.top_letras.length > 0) {
+        const existing = document.getElementById("poeticaTopLetras");
+        if (!existing) {
+            const section = document.createElement("div");
+            section.id = "poeticaTopLetras";
+            section.className = "poetica-top-letras";
+            section.innerHTML = `
+                <h4>Letras con mayor score poético</h4>
+                <div class="letras-grid">
+                    ${data.top_letras.map(l => `
+                        <div class="letra-card poetica-card" onclick="cargarDetalle(${l.id})">
+                            <div class="titulo">${escapeHtml(l.titulo)}</div>
+                            <div class="meta">
+                                ${l.anio ? `<span class="tag anio">${escapeHtml(String(l.anio))}</span>` : ""}
+                                ${l.modalidad ? `<span class="tag modalidad">${escapeHtml(l.modalidad)}</span>` : ""}
+                                ${l.nombre_metro ? `<span class="tag">${escapeHtml(l.nombre_metro)}</span>` : ""}
+                                ${l.tipo_rima ? `<span class="tag">Rima ${escapeHtml(l.tipo_rima)}</span>` : ""}
+                                <span class="tag score-tag">Score: ${l.score_poetico}/100</span>
+                            </div>
+                        </div>
+                    `).join("")}
+                </div>
+            `;
+            dash.appendChild(section);
+        }
+    }
+}
+
+function renderMiniNube(containerId, items, freqKey) {
+    const cont = document.getElementById(containerId);
+    if (!cont || !items.length) return;
+    cont.innerHTML = "";
+
+    const maxFreq = Math.max(...items.map(d => d[freqKey]));
+    const minFreq = Math.min(...items.map(d => d[freqKey]));
+    const colores = ["var(--accent)", "var(--gold)", "var(--accent-light)", "var(--success)", "var(--text-secondary)"];
+    const mezcladas = [...items].sort(() => Math.random() - 0.5);
+
+    mezcladas.forEach(item => {
+        const ratio = (item[freqKey] - minFreq) / (maxFreq - minFreq || 1);
+        const fontSize = 0.65 + ratio * 1.3;
+        const colorIndex = Math.floor((1 - ratio) * (colores.length - 1));
+        const palabra = item.palabra || item.metro || item.tipo || item.figura || item.esquema || "?";
+
+        const span = document.createElement("span");
+        span.className = "nube-word";
+        span.textContent = palabra;
+        span.style.fontSize = fontSize + "rem";
+        span.style.color = colores[colorIndex];
+        span.title = `${palabra}: ${item[freqKey]}`;
+        span.onclick = () => {
+            switchTab("buscar");
+            document.getElementById("buscadorFTS").value = palabra;
+            buscarFullText();
+        };
+        cont.appendChild(span);
+    });
+}
+
+// ==============================
+// ANÁLISIS POÉTICO INDIVIDUAL
+// ==============================
+
+function abrirAnalisisPoeta(id) {
+    const overlay = document.getElementById("modalPoetaOverlay");
+    const detalle = document.getElementById("detallePoeta");
+    if (!overlay || !detalle) return;
+
+    detalle.innerHTML = '<div class="loading">Analizando métricamente la letra...</div>';
+    overlay.classList.add("open");
+
+    fetch(`/api/analisis_poetico/${id}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                detalle.innerHTML = `<div class="empty-state">${escapeHtml(data.error)}</div>`;
+                return;
+            }
+            renderAnalisisPoeta(detalle, data);
+        })
+        .catch(() => {
+            detalle.innerHTML = '<div class="empty-state">Error al analizar la letra</div>';
+        });
+}
+
+function cerrarModalPoeta() {
+    document.getElementById("modalPoetaOverlay").classList.remove("open");
+}
+
+function renderAnalisisPoeta(cont, d) {
+    const metrica = d.metrica || {};
+    const rima = d.rima || {};
+    const vocab = d.vocabulario || {};
+    const figuras = d.figuras_retoricas || [];
+    const versos = d.versos_destacados || [];
+
+    // Score color
+    const score = d.score_poetico || 0;
+    const scoreColor = score >= 70 ? "var(--success)" : score >= 40 ? "var(--gold)" : "var(--text-muted)";
+
+    // Figuras HTML
+    let figurasHTML = "";
+    if (figuras.length > 0) {
+        figurasHTML = figuras.map(f => {
+            let ejemplosHTML = "";
+            if (f.ejemplos && f.ejemplos.length) {
+                ejemplosHTML = f.ejemplos.map(e => {
+                    if (e.versos) return `<blockquote class="figura-ejemplo">${escapeHtml(e.versos.join(" / "))}</blockquote>`;
+                    return "";
+                }).join("");
+            }
+            const countHTML = f.count !== undefined ? ` <span class="figura-count">(${f.count})</span>` : "";
+            const palabrasHTML = f.palabras ? ` — <em>${f.palabras.map(p => escapeHtml(p.palabra)).join(", ")}</em>` : "";
+            return `<div class="figura-item"><strong>${escapeHtml(f.figura)}</strong>${countHTML}${palabrasHTML}${ejemplosHTML}</div>`;
+        }).join("");
+    } else {
+        figurasHTML = '<span class="text-muted">No detectadas</span>';
+    }
+
+    // Versos destacados
+    let versosHTML = versos.length
+        ? versos.map(v => `<blockquote class="verso-destacado">${escapeHtml(v)}</blockquote>`).join("")
+        : '<span class="text-muted">No disponibles</span>';
+
+    // Léxico gaditano
+    const lexicoList = (vocab.lexico_gaditano || []).slice(0, 20).join(", ");
+
+    // Distribución de metros
+    const distrib = metrica.distribucion || {};
+    const distribHTML = Object.entries(distrib).length
+        ? Object.entries(distrib).map(([metro, cnt]) =>
+            `<span class="tag">${escapeHtml(metro)}: ${cnt}</span>`
+          ).join(" ")
+        : '<span class="text-muted">No analizado</span>';
+
+    // Estrofas con esquema
+    const estrofas = rima.estrofas || [];
+    const estrofasHTML = estrofas.slice(0, 6).map(e => `
+        <div class="estrofa-row">
+            <span class="estrofa-esquema">${escapeHtml(e.esquema || "—")}</span>
+            <span class="estrofa-info">${e.n_versos} versos · rima ${escapeHtml(e.tipo_rima || "?")}${e.forma_estrofica ? " · " + escapeHtml(e.forma_estrofica) : ""}</span>
+        </div>
+    `).join("") || '<span class="text-muted">No analizado</span>';
+
+    // Palabras clave
+    const pkHTML = (vocab.palabras_clave || []).slice(0, 12).map(p =>
+        `<span class="tag">${escapeHtml(p.palabra)}</span>`
+    ).join(" ");
+
+    cont.innerHTML = `
+        <div class="analisis-poetico">
+            <div class="analisis-header">
+                <h2>Análisis Poético</h2>
+                <div class="score-circle" style="border-color:${scoreColor};color:${scoreColor}">
+                    <span class="score-num">${score}</span>
+                    <span class="score-label">/ 100</span>
+                </div>
+            </div>
+
+            <div class="analisis-grid">
+                <!-- MÉTRICA -->
+                <div class="analisis-card">
+                    <h4>Métrica</h4>
+                    <div class="analisis-row"><span>Metro dominante</span><strong>${escapeHtml(metrica.nombre_metro || "libre")}</strong></div>
+                    <div class="analisis-row"><span>Sílabas</span><strong>${metrica.metro_dominante || "—"}</strong></div>
+                    <div class="analisis-row"><span>Coherencia métrica</span><strong>${metrica.coherencia_pct || 0}%</strong></div>
+                    <div class="analisis-row"><span>Distribución</span><div>${distribHTML}</div></div>
+                    <div class="analisis-row"><span>Estrofas</span><strong>${d.n_estrofas}</strong></div>
+                    <div class="analisis-row"><span>Versos totales</span><strong>${d.n_versos}</strong></div>
+                    <div class="analisis-row"><span>Longitud media verso</span><strong>${d.longitud_media_verso} chars</strong></div>
+                </div>
+
+                <!-- RIMA -->
+                <div class="analisis-card">
+                    <h4>Rima</h4>
+                    <div class="analisis-row"><span>Tipo de rima</span><strong>${escapeHtml(rima.tipo_rima || "libre")}</strong></div>
+                    <div class="analisis-row"><span>Esquema predominante</span><strong class="esquema-badge">${escapeHtml(rima.esquema_predominante || "—")}</strong></div>
+                    <h5 style="margin-top:1rem;margin-bottom:.5rem">Por estrofa:</h5>
+                    <div class="estrofas-lista">${estrofasHTML}</div>
+                </div>
+
+                <!-- VOCABULARIO -->
+                <div class="analisis-card">
+                    <h4>Vocabulario</h4>
+                    <div class="analisis-row"><span>Total palabras</span><strong>${vocab.total_palabras || 0}</strong></div>
+                    <div class="analisis-row"><span>Vocabulario único</span><strong>${vocab.vocabulario_unico || 0}</strong></div>
+                    <div class="analisis-row"><span>Densidad léxica</span><strong>${vocab.densidad_lexica || 0}%</strong>
+                        <em class="text-muted"> (${escapeHtml(vocab.riqueza || "—")})</em>
+                    </div>
+                    <div class="analisis-row"><span>Léxico gaditano</span>
+                        <span class="text-muted">${lexicoList || "ninguno detectado"}</span>
+                    </div>
+                    <div class="analisis-row palabras-clave-row"><span>Palabras clave</span>
+                        <div>${pkHTML || '<span class="text-muted">—</span>'}</div>
+                    </div>
+                </div>
+
+                <!-- FIGURAS RETÓRICAS -->
+                <div class="analisis-card">
+                    <h4>Figuras Retóricas</h4>
+                    ${figurasHTML}
+                </div>
+            </div>
+
+            <!-- VERSOS DESTACADOS -->
+            <div class="analisis-card analisis-full">
+                <h4>Versos Destacados</h4>
+                ${versosHTML}
+            </div>
+        </div>
+    `;
+}
+
+document.addEventListener("keydown", e => {
+    if (e.key === "Escape") {
+        cerrarModalPoeta();
+    }
+});
