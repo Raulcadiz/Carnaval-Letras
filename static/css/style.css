@@ -1244,3 +1244,323 @@ body {
     .poetica-kpis { grid-template-columns: repeat(2, 1fr); }
     .analisis-header { flex-direction: column; gap: 1rem; align-items: flex-start; }
 }
+
+/* ==============================
+   DIRECTORIO
+   ============================== */
+
+.directorio-header {
+    padding: 1rem 0 0.5rem;
+}
+
+.directorio-header h3 {
+    font-size: 1.3rem;
+    color: var(--text-primary);
+    margin-bottom: 0.3rem;
+}
+
+.directorio-toggle {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.dir-toggle {
+    padding: 0.45rem 1.2rem;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 0.88rem;
+    transition: all 0.2s;
+}
+
+.dir-toggle.active {
+    background: var(--gold);
+    color: #000;
+    border-color: var(--gold);
+    font-weight: 700;
+}
+
+.dir-count {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    align-self: center;
+    margin-left: auto;
+}
+
+.directorio-controles {
+    margin-bottom: 1rem;
+}
+
+.directorio-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 0.75rem;
+}
+
+.dir-card {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.9rem 1rem;
+    text-decoration: none;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.dir-card:hover {
+    border-color: var(--gold);
+    background: var(--bg-hover);
+}
+
+.dir-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    font-weight: 800;
+    flex-shrink: 0;
+    letter-spacing: -1px;
+}
+
+.dir-avatar-autor {
+    background: linear-gradient(135deg, var(--accent-dark), var(--accent));
+    color: white;
+}
+
+.dir-avatar-agrup {
+    background: linear-gradient(135deg, #2a1a00, var(--gold));
+    color: #000;
+}
+
+.dir-card-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.dir-nombre {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 0.2rem;
+}
+
+.dir-meta {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.25rem;
+}
+
+.dir-tags {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+}
+
+.dir-score {
+    font-size: 0.7rem;
+    background: rgba(212, 175, 55, 0.15);
+    color: var(--gold);
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    border-radius: 10px;
+    padding: 0.1rem 0.5rem;
+    font-weight: 700;
+}
+
+.dir-modalidad {
+    font-size: 0.7rem;
+    background: rgba(102, 126, 234, 0.12);
+    color: var(--accent-light);
+    border: 1px solid rgba(102, 126, 234, 0.25);
+    border-radius: 10px;
+    padding: 0.1rem 0.5rem;
+}
+
+/* ==============================
+   HISTORIA / EVOLUCIÓN TEMÁTICA
+   ============================== */
+
+.historia-header {
+    padding: 1rem 0 0.5rem;
+}
+
+.historia-header h3 {
+    font-size: 1.3rem;
+    color: var(--text-primary);
+    margin-bottom: 0.3rem;
+}
+
+.historia-controles {
+    margin-bottom: 1rem;
+}
+
+.historia-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.hist-epoca {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+
+.hist-epoca-alt {
+    border-color: rgba(212, 175, 55, 0.2);
+}
+
+.hist-epoca-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.9rem 1.2rem;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.hist-epoca-label {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--gold);
+}
+
+.hist-epoch-meta {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.hist-badge {
+    font-size: 0.75rem;
+    background: rgba(255,255,255,0.06);
+    color: var(--text-secondary);
+    border-radius: 10px;
+    padding: 0.2rem 0.6rem;
+    border: 1px solid var(--border);
+}
+
+.hist-body {
+    padding: 1.2rem;
+}
+
+.hist-vol-bar-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    margin-bottom: 1.2rem;
+}
+
+.hist-vol-bar {
+    height: 6px;
+    background: linear-gradient(90deg, var(--accent), var(--gold));
+    border-radius: 3px;
+    transition: width 0.6s ease;
+    min-width: 4px;
+}
+
+.hist-vol-label {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
+.hist-grid {
+    display: grid;
+    grid-template-columns: 180px 1fr 200px;
+    gap: 1.2rem;
+}
+
+.hist-col-title {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    margin-bottom: 0.7rem;
+    padding-bottom: 0.3rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.hist-stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.82rem;
+    padding: 0.3rem 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    color: var(--text-secondary);
+}
+
+.hist-stat-row strong {
+    color: var(--text-primary);
+    font-size: 0.85rem;
+}
+
+.hist-nube {
+    line-height: 1.9;
+    word-spacing: 0.2rem;
+}
+
+.hist-palabra {
+    color: var(--accent-light);
+    cursor: default;
+    display: inline-block;
+    margin: 0 0.1rem;
+    transition: color 0.15s;
+}
+
+.hist-palabra:hover { color: var(--gold); }
+
+.hist-agrup-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.hist-agrup-link {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.82rem;
+    color: var(--accent-light);
+    text-decoration: none;
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    transition: background 0.15s;
+}
+
+.hist-agrup-link:hover { background: var(--bg-hover); color: var(--gold); }
+
+.hist-agrup-obras {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    background: rgba(255,255,255,0.06);
+    border-radius: 8px;
+    padding: 0.1rem 0.4rem;
+    margin-left: 0.3rem;
+}
+
+@media (max-width: 900px) {
+    .hist-grid { grid-template-columns: 1fr; }
+    .directorio-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+}
+
+@media (max-width: 600px) {
+    .directorio-grid { grid-template-columns: 1fr; }
+}

@@ -43,6 +43,8 @@ function switchTab(tab) {
     if (tab === "descubrir") cargarNubePalabras();
     if (tab === "cronologia") cargarTimeline();
     if (tab === "poetica") iniciarTabPoetica();
+    if (tab === "directorio") iniciarDirectorio();
+    if (tab === "historia") cargarHistoria();
 }
 
 // ==============================
@@ -1070,3 +1072,217 @@ document.addEventListener("keydown", e => {
         cerrarModalPoeta();
     }
 });
+
+// ==============================
+// DIRECTORIO
+// ==============================
+
+let _dirTipo = "agrupaciones";
+let _dirItems = [];
+
+function iniciarDirectorio() {
+    if (_dirItems.length === 0) {
+        cargarDirectorio();
+    }
+}
+
+function switchDirectorio(tipo) {
+    _dirTipo = tipo;
+    document.getElementById("btnDirAgrup").classList.toggle("active", tipo === "agrupaciones");
+    document.getElementById("btnDirAutor").classList.toggle("active", tipo === "autores");
+    cargarDirectorio();
+}
+
+function filtrarDirectorio() {
+    cargarDirectorio();
+}
+
+function cargarDirectorio() {
+    const q = document.getElementById("dirBusqueda").value.trim();
+    const modalidad = document.getElementById("dirModalidad").value;
+    const ordenar = document.getElementById("dirOrdenar").value;
+
+    const params = new URLSearchParams({ tipo: _dirTipo, q, modalidad, ordenar });
+
+    fetch("/api/directorio?" + params)
+        .then(r => r.json())
+        .then(data => {
+            _dirItems = data.items;
+            document.getElementById("dirCount").textContent = `${data.total} resultados`;
+            renderDirectorio(data.items);
+        });
+}
+
+function renderDirectorio(items) {
+    const grid = document.getElementById("directorioGrid");
+    if (!items.length) {
+        grid.innerHTML = '<p class="text-muted" style="padding:2rem;text-align:center">No se encontraron resultados.</p>';
+        return;
+    }
+
+    grid.innerHTML = items.map(item => {
+        const esAutor = _dirTipo === "autores";
+        const href = esAutor
+            ? `/autor/${encodeURIComponent(item.nombre)}`
+            : `/agrupacion/${encodeURIComponent(item.nombre)}`;
+        const initials = item.nombre.split(/\s+/).slice(0, 2).map(w => w[0] || "").join("").toUpperCase();
+        const avatarClass = esAutor ? "dir-avatar-autor" : "dir-avatar-agrup";
+
+        const scoreTag = item.score_medio
+            ? `<span class="dir-score">${item.score_medio} pts</span>`
+            : "";
+
+        const anioRange = item.anio_inicio
+            ? `${item.anio_inicio}${item.anio_fin && item.anio_fin !== item.anio_inicio ? "–" + item.anio_fin : ""}`
+            : "—";
+
+        const substat = esAutor
+            ? `<span>${item.total_agrupaciones} agrupación${item.total_agrupaciones !== 1 ? "es" : ""}</span>`
+            : `<span>${item.total_autores || 0} autor${item.total_autores !== 1 ? "es" : ""}</span>`;
+
+        const modalidadTag = esAutor ? "" : (item.modalidad_principal
+            ? `<span class="dir-modalidad">${escapeHtml(item.modalidad_principal)}</span>`
+            : "");
+
+        return `
+        <a href="${href}" class="dir-card" target="_blank">
+            <div class="dir-avatar ${avatarClass}">${initials}</div>
+            <div class="dir-card-body">
+                <div class="dir-nombre">${escapeHtml(item.nombre)}</div>
+                <div class="dir-meta">
+                    <span>${item.total_obras} obras</span>
+                    ${substat}
+                    <span>${anioRange}</span>
+                </div>
+                <div class="dir-tags">
+                    ${modalidadTag}
+                    ${scoreTag}
+                </div>
+            </div>
+        </a>`;
+    }).join("");
+}
+
+// ==============================
+// HISTORIA / EVOLUCIÓN TEMÁTICA
+// ==============================
+
+function cargarHistoria() {
+    const modalidad = document.getElementById("historiaModalidad").value;
+    const container = document.getElementById("historiaContainer");
+    const loader = document.getElementById("historiaLoader");
+    const info = document.getElementById("historiaInfo");
+
+    container.innerHTML = "";
+    loader.style.display = "block";
+    info.textContent = "";
+
+    const params = new URLSearchParams({ modalidad });
+
+    fetch("/api/evolucion_tematica?" + params)
+        .then(r => r.json())
+        .then(data => {
+            loader.style.display = "none";
+            info.textContent = `${data.epocas.length} épocas históricas`;
+            renderHistoria(data.epocas);
+        })
+        .catch(() => {
+            loader.style.display = "none";
+            container.innerHTML = '<p class="text-muted">Error al cargar datos históricos.</p>';
+        });
+}
+
+function renderHistoria(epocas) {
+    const container = document.getElementById("historiaContainer");
+    if (!epocas.length) {
+        container.innerHTML = '<p class="text-muted" style="padding:2rem;text-align:center">No hay datos suficientes.</p>';
+        return;
+    }
+
+    const maxLetras = Math.max(...epocas.map(e => e.total_letras));
+
+    container.innerHTML = epocas.map((epoca, idx) => {
+        const pct = Math.round(epoca.total_letras / maxLetras * 100);
+        const scoreBar = epoca.score_medio ? Math.round(epoca.score_medio) : 0;
+
+        // Nube de palabras mini
+        const palabrasHTML = renderNubeMini(epoca.top_palabras, 20);
+
+        // Top agrupaciones
+        const agrupHTML = epoca.top_agrupaciones.map(a =>
+            `<a href="/agrupacion/${encodeURIComponent(a.nombre)}" class="hist-agrup-link" target="_blank">
+                ${escapeHtml(a.nombre)} <span class="hist-agrup-obras">${a.obras}</span>
+            </a>`
+        ).join("");
+
+        const metro = epoca.metro_dominante ? escapeHtml(epoca.metro_dominante) : "—";
+        const rima = epoca.rima_dominante ? escapeHtml(epoca.rima_dominante) : "—";
+        const scoreLabel = epoca.score_medio ? `${epoca.score_medio} pts` : "Sin analizar";
+        const densidadLabel = epoca.densidad_media ? `${epoca.densidad_media}%` : "—";
+
+        return `
+        <div class="hist-epoca ${idx % 2 === 1 ? "hist-epoca-alt" : ""}">
+            <div class="hist-epoca-header">
+                <div class="hist-epoca-label">${escapeHtml(epoca.label)}</div>
+                <div class="hist-epoch-meta">
+                    <span class="hist-badge">${epoca.total_letras.toLocaleString("es-ES")} letras</span>
+                    <span class="hist-badge">${epoca.n_agrupaciones} agrupaciones</span>
+                </div>
+            </div>
+
+            <div class="hist-body">
+                <!-- Barra de volumen -->
+                <div class="hist-vol-bar-wrap">
+                    <div class="hist-vol-bar" style="width:${pct}%"></div>
+                    <span class="hist-vol-label">Volumen relativo</span>
+                </div>
+
+                <div class="hist-grid">
+                    <!-- Estadísticas poéticas -->
+                    <div class="hist-stats-col">
+                        <h4 class="hist-col-title">Estilo poético</h4>
+                        <div class="hist-stat-row">
+                            <span>Metro dominante</span>
+                            <strong>${metro}</strong>
+                        </div>
+                        <div class="hist-stat-row">
+                            <span>Tipo de rima</span>
+                            <strong>${rima}</strong>
+                        </div>
+                        <div class="hist-stat-row">
+                            <span>Score medio</span>
+                            <strong>${scoreLabel}</strong>
+                        </div>
+                        <div class="hist-stat-row">
+                            <span>Densidad léxica</span>
+                            <strong>${densidadLabel}</strong>
+                        </div>
+                    </div>
+
+                    <!-- Palabras clave -->
+                    <div class="hist-palabras-col">
+                        <h4 class="hist-col-title">Vocabulario característico</h4>
+                        <div class="hist-nube">${palabrasHTML}</div>
+                    </div>
+
+                    <!-- Agrupaciones destacadas -->
+                    <div class="hist-agrup-col">
+                        <h4 class="hist-col-title">Agrupaciones destacadas</h4>
+                        <div class="hist-agrup-list">${agrupHTML || '<span class="text-muted">—</span>'}</div>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+    }).join("");
+}
+
+function renderNubeMini(palabras, limit) {
+    if (!palabras || !palabras.length) return '<span class="text-muted">—</span>';
+    const top = palabras.slice(0, limit);
+    const maxFreq = top[0].freq;
+    return top.map(p => {
+        const size = 0.72 + (p.freq / maxFreq) * 0.8;
+        const opacity = 0.5 + (p.freq / maxFreq) * 0.5;
+        return `<span class="hist-palabra" style="font-size:${size.toFixed(2)}rem;opacity:${opacity.toFixed(2)}">${escapeHtml(p.palabra)}</span>`;
+    }).join(" ");
+}

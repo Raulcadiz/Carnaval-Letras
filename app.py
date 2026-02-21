@@ -1,8 +1,10 @@
 from flask import Flask, render_template, jsonify, request, Response
 import os
 import json
+import re
 import time
 import shutil
+from collections import Counter
 from database import (
     get_db, init_db, migrate_db, buscar_duplicados, eliminar_duplicados,
     obtener_estadisticas, busqueda_fulltext, reconstruir_fts, generar_hash, DB_NAME
@@ -1642,6 +1644,230 @@ def estadisticas_poeticas():
         "evolucion_score": evolucion_score,
         "top_letras_poeticas": top_letras,
     })
+
+
+
+# =========================
+# DIRECTORIO
+# =========================
+
+@app.route("/api/directorio")
+def api_directorio():
+    """Listado de autores o agrupaciones con stats, filtrable y ordenable."""
+    tipo = request.args.get("tipo", "agrupaciones")  # "autores" o "agrupaciones"
+    q = request.args.get("q", "").strip()
+    modalidad = request.args.get("modalidad", "")
+    ordenar = request.args.get("ordenar", "obras")  # obras, score, anios
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    if tipo == "autores":
+        sql = """
+            SELECT
+                autor as nombre,
+                COUNT(*) as total_obras,
+                COUNT(DISTINCT agrupacion) as total_agrupaciones,
+                MIN(anio) as anio_inicio,
+                MAX(anio) as anio_fin,
+                (MAX(anio) - MIN(anio) + 1) as anios_activo,
+                AVG(CASE WHEN score_poetico > 0 THEN score_poetico END) as score_medio,
+                GROUP_CONCAT(DISTINCT modalidad) as modalidades
+            FROM letras
+            WHERE autor IS NOT NULL AND autor != ''
+        """
+        params = []
+        if q:
+            sql += " AND autor LIKE ?"
+            params.append(f"%{q}%")
+        if modalidad:
+            sql += " AND modalidad = ?"
+            params.append(modalidad)
+
+        sql += " GROUP BY autor"
+
+        if ordenar == "score":
+            sql += " HAVING score_medio IS NOT NULL ORDER BY score_medio DESC"
+        elif ordenar == "anios":
+            sql += " ORDER BY anios_activo DESC"
+        else:
+            sql += " ORDER BY total_obras DESC"
+
+        sql += " LIMIT 200"
+        cursor.execute(sql, params)
+
+    else:  # agrupaciones
+        sql = """
+            SELECT
+                agrupacion as nombre,
+                COUNT(*) as total_obras,
+                COUNT(DISTINCT autor) as total_autores,
+                MIN(anio) as anio_inicio,
+                MAX(anio) as anio_fin,
+                (MAX(anio) - MIN(anio) + 1) as anios_activo,
+                AVG(CASE WHEN score_poetico > 0 THEN score_poetico END) as score_medio,
+                GROUP_CONCAT(DISTINCT modalidad) as modalidades,
+                MAX(modalidad) as modalidad_principal
+            FROM letras
+            WHERE agrupacion IS NOT NULL AND agrupacion != ''
+        """
+        params = []
+        if q:
+            sql += " AND agrupacion LIKE ?"
+            params.append(f"%{q}%")
+        if modalidad:
+            sql += " AND modalidad = ?"
+            params.append(modalidad)
+
+        sql += " GROUP BY agrupacion"
+
+        if ordenar == "score":
+            sql += " HAVING score_medio IS NOT NULL ORDER BY score_medio DESC"
+        elif ordenar == "anios":
+            sql += " ORDER BY anio_inicio ASC"
+        else:
+            sql += " ORDER BY total_obras DESC"
+
+        sql += " LIMIT 300"
+        cursor.execute(sql, params)
+
+    rows = cursor.fetchall()
+    conn.close()
+
+    result = []
+    for r in rows:
+        item = {
+            "nombre": r["nombre"],
+            "total_obras": r["total_obras"],
+            "anio_inicio": r["anio_inicio"],
+            "anio_fin": r["anio_fin"],
+            "anios_activo": r["anios_activo"] or 1,
+            "score_medio": round(r["score_medio"], 1) if r["score_medio"] else None,
+            "modalidades": list(set((r["modalidades"] or "").split(","))) if r["modalidades"] else [],
+        }
+        if tipo == "autores":
+            item["total_agrupaciones"] = r["total_agrupaciones"]
+        else:
+            item["total_autores"] = r["total_autores"]
+            item["modalidad_principal"] = r["modalidad_principal"]
+        result.append(item)
+
+    return jsonify({"tipo": tipo, "total": len(result), "items": result})
+
+
+# =========================
+# EVOLUCIÓN TEMÁTICA
+# =========================
+
+@app.route("/api/evolucion_tematica")
+def api_evolucion_tematica():
+    """Análisis diacrónico por décadas: palabras clave, score, metro, rima."""
+    modalidad = request.args.get("modalidad", "")
+
+    # Definición de épocas
+    epocas = [
+        {"label": "Orígenes (hasta 1939)", "desde": 0, "hasta": 1939},
+        {"label": "Franquismo (1940–1975)", "desde": 1940, "hasta": 1975},
+        {"label": "Democracia (1976–2000)", "desde": 1976, "hasta": 2000},
+        {"label": "Siglo XXI (2001–2015)", "desde": 2001, "hasta": 2015},
+        {"label": "Presente (2016–hoy)", "desde": 2016, "hasta": 2100},
+    ]
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    resultado = []
+
+    for epoca in epocas:
+        params = [epoca["desde"], epoca["hasta"]]
+        mod_filter = ""
+        if modalidad:
+            mod_filter = " AND modalidad = ?"
+            params.append(modalidad)
+
+        # Conteo y score
+        cursor.execute(f"""
+            SELECT COUNT(*) as total,
+                   AVG(CASE WHEN score_poetico > 0 THEN score_poetico END) as score_medio,
+                   AVG(CASE WHEN densidad_lexica > 0 THEN densidad_lexica END) as densidad_media,
+                   COUNT(DISTINCT agrupacion) as n_agrupaciones
+            FROM letras
+            WHERE anio >= ? AND anio <= ?{mod_filter}
+        """, params)
+        stats_row = cursor.fetchone()
+
+        if not stats_row or stats_row["total"] == 0:
+            continue
+
+        # Metro dominante
+        cursor.execute(f"""
+            SELECT nombre_metro, COUNT(*) as cnt
+            FROM letras
+            WHERE anio >= ? AND anio <= ? AND nombre_metro IS NOT NULL{mod_filter}
+            GROUP BY nombre_metro ORDER BY cnt DESC LIMIT 1
+        """, params)
+        metro_row = cursor.fetchone()
+
+        # Tipo de rima más frecuente
+        cursor.execute(f"""
+            SELECT tipo_rima, COUNT(*) as cnt
+            FROM letras
+            WHERE anio >= ? AND anio <= ? AND tipo_rima IS NOT NULL{mod_filter}
+            GROUP BY tipo_rima ORDER BY cnt DESC LIMIT 1
+        """, params)
+        rima_row = cursor.fetchone()
+
+        # Top agrupaciones de la época
+        cursor.execute(f"""
+            SELECT agrupacion, COUNT(*) as cnt
+            FROM letras
+            WHERE anio >= ? AND anio <= ? AND agrupacion IS NOT NULL{mod_filter}
+            GROUP BY agrupacion ORDER BY cnt DESC LIMIT 5
+        """, params)
+        top_agrupaciones = [{"nombre": r["agrupacion"], "obras": r["cnt"]} for r in cursor.fetchall()]
+
+        # Palabras clave: extraer del contenido
+        cursor.execute(f"""
+            SELECT contenido FROM letras
+            WHERE anio >= ? AND anio <= ? AND contenido IS NOT NULL{mod_filter}
+            ORDER BY RANDOM() LIMIT 100
+        """, params)
+        contenidos = [r["contenido"] for r in cursor.fetchall() if r["contenido"]]
+
+        # Contar frecuencia de palabras (sin stopwords)
+        STOP = {
+            "de","la","el","en","que","y","a","los","las","un","una","con","por","para",
+            "es","se","del","al","lo","su","me","le","no","si","mi","tu","te","he",
+            "ha","han","hay","ser","son","era","fue","mas","más","ya","o","e","ni",
+            "pero","como","tan","muy","todo","toda","todos","todas","este","esta",
+            "ese","esa","esos","esas","esto","yo","tú","él","ella","nos","vos",
+            "cuando","donde","porque","aunque","sino","pues","bien","así","cada",
+        }
+        word_counter = Counter()
+        for contenido in contenidos:
+            palabras = re.findall(r"\b[a-záéíóúüñ]{4,}\b", contenido.lower())
+            for p in palabras:
+                if p not in STOP:
+                    word_counter[p] += 1
+
+        top_palabras = [{"palabra": p, "freq": c} for p, c in word_counter.most_common(30)]
+
+        resultado.append({
+            "label": epoca["label"],
+            "desde": epoca["desde"],
+            "hasta": min(epoca["hasta"], 2026),
+            "total_letras": stats_row["total"],
+            "n_agrupaciones": stats_row["n_agrupaciones"],
+            "score_medio": round(stats_row["score_medio"], 1) if stats_row["score_medio"] else None,
+            "densidad_media": round(stats_row["densidad_media"], 1) if stats_row["densidad_media"] else None,
+            "metro_dominante": metro_row["nombre_metro"] if metro_row else None,
+            "rima_dominante": rima_row["tipo_rima"] if rima_row else None,
+            "top_agrupaciones": top_agrupaciones,
+            "top_palabras": top_palabras,
+        })
+
+    conn.close()
+    return jsonify({"epocas": resultado})
 
 
 if __name__ == "__main__":

@@ -49,6 +49,8 @@
     <button class="tab" data-tab="comparar" onclick="switchTab('comparar')">Comparar</button>
     <button class="tab" data-tab="estadisticas" onclick="switchTab('estadisticas')">Estad&iacute;sticas</button>
     <button class="tab" data-tab="poetica" onclick="switchTab('poetica')">Po&eacute;tica</button>
+    <button class="tab" data-tab="directorio" onclick="switchTab('directorio')">Directorio</button>
+    <button class="tab" data-tab="historia" onclick="switchTab('historia')">Historia</button>
 </nav>
 
 <!-- TAB: BUSCAR -->
@@ -263,6 +265,60 @@
         <h4>Analizar una letra concreta</h4>
         <p class="text-muted">Busca una letra y haz clic en <strong>Ver an&aacute;lisis po&eacute;tico</strong> desde el detalle de la letra.</p>
     </div>
+</section>
+
+<!-- TAB: DIRECTORIO -->
+<section class="tab-content" id="tab-directorio">
+    <div class="directorio-header">
+        <h3>Directorio del Carnaval</h3>
+        <p class="text-muted">Explora autores y agrupaciones del archivo con sus perfiles completos</p>
+    </div>
+
+    <div class="directorio-toggle">
+        <button class="dir-toggle active" id="btnDirAgrup" onclick="switchDirectorio('agrupaciones')">Agrupaciones</button>
+        <button class="dir-toggle" id="btnDirAutor" onclick="switchDirectorio('autores')">Autores</button>
+    </div>
+
+    <div class="directorio-controles filtros-bar">
+        <input type="text" id="dirBusqueda" placeholder="Buscar..." oninput="filtrarDirectorio()">
+        <select id="dirModalidad" onchange="filtrarDirectorio()">
+            <option value="">Todas las modalidades</option>
+            <option value="Comparsa">Comparsa</option>
+            <option value="Chirigota">Chirigota</option>
+            <option value="Coro">Coro</option>
+            <option value="Cuarteto">Cuarteto</option>
+        </select>
+        <select id="dirOrdenar" onchange="filtrarDirectorio()">
+            <option value="obras">Ordenar por obras</option>
+            <option value="score">Ordenar por score po&eacute;tico</option>
+            <option value="anios">Ordenar por trayectoria</option>
+        </select>
+        <span class="dir-count" id="dirCount"></span>
+    </div>
+
+    <div id="directorioGrid" class="directorio-grid"></div>
+</section>
+
+<!-- TAB: HISTORIA -->
+<section class="tab-content" id="tab-historia">
+    <div class="historia-header">
+        <h3>Evoluci&oacute;n Tem&aacute;tica del Carnaval</h3>
+        <p class="text-muted">140 a&ntilde;os de historia a trav&eacute;s del vocabulario, la m&eacute;trica y el estilo</p>
+    </div>
+
+    <div class="historia-controles filtros-bar">
+        <select id="historiaModalidad" onchange="cargarHistoria()">
+            <option value="">Todas las modalidades</option>
+            <option value="Comparsa">Comparsa</option>
+            <option value="Chirigota">Chirigota</option>
+            <option value="Coro">Coro</option>
+            <option value="Cuarteto">Cuarteto</option>
+        </select>
+        <span class="text-muted" id="historiaInfo"></span>
+    </div>
+
+    <div id="historiaLoader" class="loader-text" style="display:none">Cargando datos hist&oacute;ricos...</div>
+    <div id="historiaContainer" class="historia-container"></div>
 </section>
 
 <!-- MODAL DETALLE -->
