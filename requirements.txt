@@ -1,3 +1,16 @@
-flask
-requests
-beautifulsoup4
+# === Carnaval SaaS — Dependencias ===
+# Instalar con: pip install -r requirements.txt
+
+# Framework web
+flask>=3.0.0
+
+# Scrapers HTTP
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+
+# Importador de HuggingFace (opcional — solo para scraper_huggingface.py)
+# datasets>=2.14.0
+
+# Servidor de producción (opcional — para despliegue)
+# gunicorn>=21.0.0
+# waitress>=3.0.0  # Alternativa para Windows
